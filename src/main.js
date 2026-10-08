@@ -1,11 +1,11 @@
 import { num as numU, fmt as fmtU, parseLen as parseLenU, parseBulk as parseBulkU, unitWord as unitWordU } from './js/units.js';
+import * as L from './js/layout.js';
 import { homography, inv3, mapPt } from './js/homography.js';
 
 const K = 20;                       // wall-plane pixels per inch
 const KEY = 'galleryWallPlanner.v1';
 const $ = s => document.querySelector(s);
-const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
-const r16 = v => Math.round(v*16)/16;
+const { clamp, r16 } = L;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- state ---------- */
@@ -37,12 +37,8 @@ const handles=[...document.querySelectorAll('.h')];
 const els=new Map();
 let Hm=null, Hi=null;
 
-const area = () => S.area || {x:0,y:0,w:S.wall.w,h:S.wall.h};
-function normArea(){
-  const a=S.area; if (!a) return;
-  a.w=clamp(a.w,2,S.wall.w); a.h=clamp(a.h,2,S.wall.h);
-  a.x=clamp(a.x,0,S.wall.w-a.w); a.y=clamp(a.y,0,S.wall.h-a.h);
-}
+const area = () => L.areaOf(S);
+const normArea = () => { S.area = L.normArea(S.area, S.wall); };
 const refRect = () => S.cal.custom ? S.cal.ref : {x:0,y:0,w:S.wall.w,h:S.wall.h};
 
 function initCorners(){
@@ -111,66 +107,17 @@ function toWall(cx,cy){
 }
 
 /* ---------- frame geometry ---------- */
-function computeBad(){
-  const bad=new Map(), W=S.wall.w, H=S.wall.h, e=1e-3, F=S.frames;
-  for (const f of F){
-    if (f.x<-e||f.y<-e||f.x+f.w>W+e||f.y+f.h>H+e) bad.set(f.id,'Extends past the wall');
-  }
-  if (S.area){ const a=S.area; for (const f of F) if (f.kind!=='obstacle'&&!bad.has(f.id)&&(f.x<a.x-e||f.y<a.y-e||f.x+f.w>a.x+a.w+e||f.y+f.h>a.y+a.h+e)) bad.set(f.id,'Outside the gallery area'); }
-  for (let i=0;i<F.length;i++) for (let j=i+1;j<F.length;j++){
-    const a=F[i], b=F[j];
-    if (a.x<b.x+b.w-e && b.x<a.x+a.w-e && a.y<b.y+b.h-e && b.y<a.y+a.h-e){
-      if (!bad.has(a.id)) bad.set(a.id,'Overlaps '+b.name);
-      if (!bad.has(b.id)) bad.set(b.id,'Overlaps '+a.name);
-    }
-  }
-  T.bad=bad;
-}
+function computeBad(){ T.bad=L.computeBad(S); }
 function renumber(){
   let n=0; T.num=new Map();
   for (const f of S.frames) if (f.kind!=='obstacle') T.num.set(f.id,++n);
 }
-function gapsOf(f){
-  let L=null,R=null,Tp=null,B=null; const m=(a,g)=>a==null?g:Math.min(a,g);
-  for (const o of S.frames){
-    if (o===f) continue;
-    const ovY=f.y<o.y+o.h&&o.y<f.y+f.h, ovX=f.x<o.x+o.w&&o.x<f.x+f.w;
-    if (ovY){ if (o.x+o.w<=f.x+1e-6) L=m(L,f.x-(o.x+o.w)); else if (o.x>=f.x+f.w-1e-6) R=m(R,o.x-(f.x+f.w)); }
-    if (ovX){ if (o.y+o.h<=f.y+1e-6) Tp=m(Tp,f.y-(o.y+o.h)); else if (o.y>=f.y+f.h-1e-6) B=m(B,o.y-(f.y+f.h)); }
-  }
-  return {L,R,T:Tp,B};
-}
-function hit(x,y){
-  for (let i=S.frames.length-1;i>=0;i--){ const f=S.frames[i]; if (x>=f.x&&x<=f.x+f.w&&y>=f.y&&y<=f.y+f.h) return f; }
-  return null;
-}
+const gapsOf = f => L.gapsOf(S.frames,f);
+const hit = (x,y) => L.hit(S.frames,x,y);
 function snapMove(f,nx,ny,free){
-  const W=S.wall.w,H=S.wall.h,g=S.gap, thr=8*T.u/K;
-  T.guides=[];
-  if (!free && S.snap){
-    const O=S.frames.filter(o=>o!==f);
-    const pick=(mine,cands,axis)=>{
-      let best=thr, delta=null, pos=null;
-      for (let i=0;i<mine.length;i++) for (const t of cands[i]){
-        const d=t-mine[i]; if (Math.abs(d)<best){ best=Math.abs(d); delta=d; pos=t; }
-      }
-      return delta==null?null:{delta,pos,axis};
-    };
-    const mx=[nx,nx+f.w/2,nx+f.w], my=[ny,ny+f.h/2,ny+f.h];
-    const A=area(), cx=[[0,A.x],[W/2,A.x+A.w/2],[W,A.x+A.w]], cy=[[0,A.y],[H/2,A.y+A.h/2],[H,A.y+A.h]];
-    for (const o of O){
-      cx[0].push(o.x,o.x+o.w,o.x+o.w/2,o.x+o.w+g); cx[1].push(o.x+o.w/2); cx[2].push(o.x+o.w,o.x,o.x+o.w/2,o.x-g);
-      cy[0].push(o.y,o.y+o.h,o.y+o.h/2,o.y+o.h+g); cy[1].push(o.y+o.h/2); cy[2].push(o.y+o.h,o.y,o.y+o.h/2,o.y-g);
-    }
-    const sx=pick(mx,cx,'x'), sy=pick(my,cy,'y');
-    if (sx){ nx+=sx.delta; T.guides.push({axis:'x',pos:sx.pos}); }
-    if (sy){ ny+=sy.delta; T.guides.push({axis:'y',pos:sy.pos}); }
-    if (!sx && S.grid>0) nx=Math.round(nx/S.grid)*S.grid;
-    if (!sy && S.grid>0) ny=Math.round(ny/S.grid)*S.grid;
-  } else if (!free && S.grid>0){
-    nx=Math.round(nx/S.grid)*S.grid; ny=Math.round(ny/S.grid)*S.grid;
-  }
-  return [nx,ny];
+  const r=L.snapMove(S,f,nx,ny,free,8*T.u/K);
+  T.guides=r.guides;
+  return [r.x,r.y];
 }
 
 /* ---------- rendering ---------- */
@@ -296,13 +243,7 @@ const redo=()=>{ if (T.hi<T.hist.length-1) restore(T.hi+1); };
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2400); }
 function locked(){ if (S.locked){ toast('Layout is locked. Unlock to make changes.'); return true; } return false; }
-function findSpot(w,h){
-  const A=area(),g=S.gap/2;
-  for (let y=A.y+S.gap;y+h<=A.y+A.h-S.gap+1e-6;y+=1) for (let x=A.x+S.gap;x+w<=A.x+A.w-S.gap+1e-6;x+=1){
-    if (!S.frames.some(o=>x<o.x+o.w+g&&o.x<x+w+g&&y<o.y+o.h+g&&o.y<y+h+g)) return [x,y];
-  }
-  return [clamp(A.x+(A.w-w)/2,0,Math.max(0,S.wall.w-w)),clamp(A.y+(A.h-h)/2,0,Math.max(0,S.wall.h-h))];
-}
+const findSpot = (w,h) => L.findSpot(S,w,h);
 function addFrame(o,quiet){
   const id=S.nextId++, [x,y]=findSpot(o.w,o.h);
   const f={id,name:o.name||(o.kind==='obstacle'?'Obstacle':'Frame '+id),w:o.w,h:o.h,x,y,hue:Math.round((id*137.5)%360),kind:o.kind||'frame'};
@@ -310,34 +251,18 @@ function addFrame(o,quiet){
   if (!quiet){ checkpoint(); renderAll(); }
   return f;
 }
+const applyMoves = moves => { for (const m of moves){ const f=S.frames.find(x=>x.id===m.id); if (f){ f.x=m.x; f.y=m.y; } } };
 function arrange(shuffle){
   if (locked()) return;
-  const fr=S.frames.filter(f=>f.kind!=='obstacle'); if (!fr.length){ toast('Add some frames first.'); return; }
-  const Ar=area(), W=Ar.w, H=Ar.h, g=S.gap; let order=fr.slice();
-  if (shuffle){ for (let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } }
-  else order.sort((a,b)=>b.w*b.h-a.w*a.h);
-  const area=order.reduce((s,f)=>s+(f.w+g)*(f.h+g),0), maxW=Math.max(...order.map(f=>f.w));
-  let tw=clamp(Math.sqrt(area*(W/H)),maxW,Math.max(maxW,W)), rows, th;
-  for (let t=0;t<40;t++){
-    rows=[]; let row=null;
-    for (const f of order){
-      if (!row||row.w+g+f.w>tw+1e-6){ row={items:[],w:0,h:0}; rows.push(row); }
-      row.w+=(row.items.length?g:0)+f.w; row.items.push(f); row.h=Math.max(row.h,f.h);
-    }
-    th=rows.reduce((s,r)=>s+r.h,0)+g*(rows.length-1);
-    if (th<=H||tw>=W) break; tw=Math.min(W,tw*1.06);
-  }
-  let y=Ar.y+(H-th)/2;
-  for (const r of rows){ let x=Ar.x+(W-r.w)/2; for (const f of r.items){ f.x=r16(x); f.y=r16(y+(r.h-f.h)/2); x+=f.w+g; } y+=r.h+g; }
+  if (!S.frames.some(f=>f.kind!=='obstacle')){ toast('Add some frames first.'); return; }
+  const r=L.arrange(S,{shuffle});
+  applyMoves(r.moves);
   checkpoint(); renderAll();
-  if (th>H+1e-6) toast('These frames are too big to fit in the gallery area with that gap.');
+  if (r.overflow) toast('These frames are too big to fit in the gallery area with that gap.');
 }
 function centerGroup(){
   if (locked()) return;
-  const fr=S.frames.filter(f=>f.kind!=='obstacle'); if (!fr.length) return;
-  const x0=Math.min(...fr.map(f=>f.x)),x1=Math.max(...fr.map(f=>f.x+f.w)),y0=Math.min(...fr.map(f=>f.y)),y1=Math.max(...fr.map(f=>f.y+f.h));
-  const Ar=area(), dx=Ar.x+Ar.w/2-(x0+x1)/2, dy=Ar.y+Ar.h/2-(y0+y1)/2;
-  fr.forEach(f=>{ f.x=r16(f.x+dx); f.y=r16(f.y+dy); });
+  applyMoves(L.centerGroup(S));
   checkpoint(); renderAll();
 }
 const sel=()=>S.frames.find(f=>f.id===S.sel);
