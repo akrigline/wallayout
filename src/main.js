@@ -1,4 +1,6 @@
 import { num as numU, fmt as fmtU, parseLen as parseLenU, parseBulk as parseBulkU, unitWord as unitWordU } from './js/units.js';
+import * as HS from './js/hangSheet.js';
+import { encodeSpec as encodePlan, decodeSpec as decodePlan } from './js/shareCode.js';
 import * as L from './js/layout.js';
 import { homography, inv3, mapPt } from './js/homography.js';
 
@@ -270,20 +272,11 @@ function setUnit(u){
   S.unit=u; save(); renderAll();
 }
 /* ---------- hang sheet ---------- */
-function sheetRows(){
-  const H=S.wall.h, W=S.wall.w;
-  return S.frames.filter(f=>f.kind!=='obstacle').map(f=>({n:T.num.get(f.id),f,
-    left:f.x, right:W-(f.x+f.w), top:f.y, floor:H-(f.y+f.h), hx:f.x+f.w/2, hfloor:H-(f.y+S.hook)}));
-}
-function sheetText(){
-  const rows=sheetRows();
-  let t=`Gallery wall: ${fmt(S.wall.w)} wide × ${fmt(S.wall.h)} tall\nHook is ${fmt(S.hook)} below the top of each frame. Left = distance from the wall's left edge. Floor = height of the bottom edge above the floor.\n\n`;
-  for (const r of rows) t+=`${r.n}. ${r.f.name} (${fmt(r.f.w)} × ${fmt(r.f.h)}): left edge ${fmt(r.left)}, top edge ${fmt(r.top)} below ceiling, bottom edge ${fmt(r.floor)} above floor. Hook ${fmt(r.hx)} from left, ${fmt(r.hfloor)} above floor.\n`;
-  return t;
-}
+const sheetRows = () => HS.sheetRows(S);
+const sheetText = () => HS.sheetText(S,S.unit);
 function openSheet(){
   const rows=sheetRows(), bad=T.bad.size;
-  $('#sheetBody').innerHTML=(bad?`<p style="color:var(--bad)">${bad} frame${bad>1?'s have':' has'} a conflict (overlap or off the wall). Fix before hanging.</p>`:'')+
+  $('#sheetBody').innerHTML=(bad?`<p style="color:var(--bad)">${HS.conflictNotice(bad)}</p>`:'')+
     `<p>Wall ${fmt(S.wall.w)} × ${fmt(S.wall.h)}. Hook sits ${fmt(S.hook)} below each frame's top edge. Measure from the wall's left edge and from the floor.</p>`+
     (rows.length?`<table><thead><tr><th>#</th><th>Name</th><th>Size</th><th>Left edge</th><th>Top (from ceiling)</th><th>Bottom (from floor)</th><th>Hook from left</th><th>Hook from floor</th></tr></thead><tbody>`+
     rows.map(r=>`<tr><td>${r.n}</td><td>${esc(r.f.name)}</td><td>${fmt(r.f.w)} × ${fmt(r.f.h)}</td><td>${fmt(r.left)}</td><td>${fmt(r.top)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.hx)}</td><td>${fmt(r.hfloor)}</td></tr>`).join('')+`</tbody></table>`:'<p>No frames on the wall yet.</p>');
@@ -297,24 +290,8 @@ async function copyText(t){
 }
 
 /* ---------- share code ---------- */
-function encodeSpec(){
-  const d={v:1,unit:S.unit,wall:S.wall,area:S.area,gap:S.gap,hook:S.hook,
-    frames:S.frames.map(f=>({name:f.name,w:f.w,h:f.h,x:f.x,y:f.y,hue:f.hue,kind:f.kind}))};
-  return 'GWP1:'+btoa(unescape(encodeURIComponent(JSON.stringify(d))));
-}
-function decodeSpec(txt){
-  const m=String(txt).trim().replace(/\s+/g,'').match(/GWP1:([A-Za-z0-9+/=]+)/);
-  if (!m) throw new Error('no code');
-  const d=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-  const ok=v=>typeof v==='number'&&isFinite(v);
-  if (!d||!d.wall||!(d.wall.w>0)||!(d.wall.h>0)||!Array.isArray(d.frames)) throw new Error('bad');
-  const frames=d.frames.slice(0,500).map((f,i)=>{
-    if (!(f.w>0&&f.h>0)||!ok(f.x)||!ok(f.y)) throw new Error('bad');
-    return {id:i+1,name:String(f.name||'Frame').slice(0,80),w:f.w,h:f.h,x:f.x,y:f.y,hue:ok(f.hue)?f.hue:Math.round(((i+1)*137.5)%360),kind:f.kind==='obstacle'?'obstacle':'frame'};
-  });
-  const a=d.area, area=a&&ok(a.x)&&ok(a.y)&&a.w>0&&a.h>0?{x:a.x,y:a.y,w:a.w,h:a.h}:null;
-  return {unit:d.unit==='cm'?'cm':'in',wall:{w:d.wall.w,h:d.wall.h},area,gap:ok(d.gap)&&d.gap>=0?d.gap:S.gap,hook:ok(d.hook)&&d.hook>=0?d.hook:S.hook,frames};
-}
+const encodeSpec = () => encodePlan(S);
+const decodeSpec = txt => decodePlan(txt,{gap:S.gap,hook:S.hook});
 function openShare(){ $('#codeOut').value=encodeSpec(); $('#codeIn').value=''; $('#share').hidden=false; }
 
 /* ---------- mode ---------- */
