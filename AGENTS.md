@@ -9,7 +9,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Spec-driven development uses the OpenSpec CLI (`openspec` on PATH). Active change proposals live in `openspec/changes/<name>/`, completed ones are moved to `openspec/changes/archive/<date>-<name>/`, and the current merged capability specs live in `openspec/specs/<capability>/spec.md`. See the `openspec-propose`/`openspec-apply-change`/`openspec-archive-change` skills for the workflow.
 - `npm test` runs vitest (happy-dom, see `vitest.config.js`); `npm run build` runs the Vite production build. Both must stay green before landing a change; a husky `pre-push` hook runs `npm test`.
 - No component-testing library is installed. Logic worth testing lives in plain `.js` modules with no DOM access, so it can be unit-tested directly.
-- The site is served from `https://akrigline.github.io/wallayout/`, so `vite.config.js` sets `base: '/wallayout/'`. There is no custom domain/`CNAME`.
+- The site is served at `https://www.akrigline.com/wallayout/` (the `akrigline` account's user-site custom domain applies; `akrigline.github.io/wallayout/` redirects there), so `vite.config.js` sets `base: '/wallayout/'`. There is no custom domain/`CNAME`.
 - Release/deploy is a two-workflow chain, deliberately not a single push→deploy workflow: push to `main` runs `release.yml` (test + build, then a date-based tag like `v2026.10.07`, `-2`/`-3` for same-day repeats, in `America/New_York`, then `gh release create`), which explicitly dispatches `pages.yml` (build + `actions/deploy-pages`). The explicit dispatch exists because `GITHUB_TOKEN`-authored events don't trigger other workflows. `release-reconcile.yml` (daily cron) catches Dependabot auto-merges, which land via `GITHUB_TOKEN` and so never fire `release.yml`'s push trigger. `openspec/`, `brainstorming/`, `.claude/` and `*.md` changes don't cut a release.
 - The `test` job id in `ci.yml` and `release.yml` must stay literally `test`: it is the status check the branch ruleset requires.
 - Dependabot PRs (grouped minor/patch) auto-merge once `test` passes.
@@ -23,8 +23,8 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 
 ## Status and next steps
 
-- Repo is public by decision (`akrigline/wallayout`). As of 2026-10-07 it exists only locally: the GitHub repo has not been created or pushed, the branch ruleset requiring the `test` check is not on, and Pages is not enabled. Order matters: push, let CI go green once, then add the ruleset (see the `github-ci-scaffold` skill's `references/branch-protection.md`) and enable Pages with `build_type: workflow`. Requiring `test` before the first green run would block merging the PR that adds it.
+- Repo is public (`akrigline/wallayout`), pushed 2026-10-07. First CI run was green, the `main-require-ci` ruleset (requires `test`, admin bypass) is on, Pages is enabled with `build_type: workflow`, and release `v2026.10.07` deployed.
 - The five-change module refactor is complete and archived in `openspec/changes/archive/`; current specs are in `openspec/specs/`.
 - Fixed along the way: `arrange()` shadowed `area()` (Auto-arrange, Shuffle and the first-run boot threw), and the lock banner showed while unlocked (`.banner` `display:flex` beat `[hidden]`).
-- Not verified in a real browser: drag/snap, area resize, and the projection view. Worth a manual pass on `npm run dev`.
+- Verified in headless Chromium on 2026-10-07 (drag with snap guides, area resize, projection outline/wash/solid, calibration panel; no console errors). Known cosmetic issue: labels clip on very small frames (e.g. 5×7).
 - Deliberately omitted: `CONTRIBUTING.md` and its issue-before-PR rule (cookbook-maker has them because it is feature-complete; this project is not).
