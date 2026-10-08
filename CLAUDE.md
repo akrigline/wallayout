@@ -14,10 +14,17 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - The `test` job id in `ci.yml` and `release.yml` must stay literally `test`: it is the status check the branch ruleset requires.
 - Dependabot PRs (grouped minor/patch) auto-merge once `test` passes.
 
+## Architecture
+
+- `index.html` is markup only; `src/main.js` imports CSS from `src/css/` (tokens, layout, wall, projection, responsive: keep that order, responsive must stay last) and boots the UI.
+- Pure, DOM-free logic in `src/js/`, each with a sibling `*.test.js`: `units`, `homography`, `layout` (conflicts, snapping, arrange), `hangSheet`, `shareCode` (`GWP1:` codes, must stay byte-compatible), `store` (state, localStorage persistence, 150-deep undo, lock).
+- DOM code in `src/ui/`: `ctx.js` (shared `S`/`T`/store/element refs, `V` holds the current homography), `render.js`, `actions.js`, `modals.js`, `projection.js`, `interaction.js`, `toast.js`. The modules import each other circularly, which is fine because nothing runs at import time except `ctx.js`; listeners are registered by the `init*()` functions called from `main.js`.
+- `src/smoke.test.js` boots the whole app in happy-dom (it must drop document-level listeners between boots) and drives clicks, keys and projection mode. happy-dom has no layout, so drag/snap and projection visuals need a real browser; the Chrome devtools tool was flaky, headless `chrome-headless-shell --screenshot` from `~/.cache/ms-playwright` works.
+
 ## Status and next steps
 
 - Repo is public by decision (`akrigline/wallayout`). As of 2026-10-07 it exists only locally: the GitHub repo has not been created or pushed, the branch ruleset requiring the `test` check is not on, and Pages is not enabled. Order matters: push, let CI go green once, then add the ruleset (see the `github-ci-scaffold` skill's `references/branch-protection.md`) and enable Pages with `build_type: workflow`. Requiring `test` before the first green run would block merging the PR that adds it.
-- The module refactor is five OpenSpec changes in `openspec/changes/` (order in `README.md`). They currently have proposals only; run `/opsx:propose` on each to generate specs, design and tasks before implementing.
-- `vitest.config.js` has `passWithNoTests: true` as a stopgap; remove it in the first change that adds tests.
-- Known bug in the original code: `arrange()` shadows `area()` with a local `const area`, so Auto-arrange and Shuffle throw a ReferenceError. Fixed in `fix-and-extract-layout-engine`.
+- The five-change module refactor is complete and archived in `openspec/changes/archive/`; current specs are in `openspec/specs/`.
+- Fixed along the way: `arrange()` shadowed `area()` (Auto-arrange, Shuffle and the first-run boot threw), and the lock banner showed while unlocked (`.banner` `display:flex` beat `[hidden]`).
+- Not verified in a real browser: drag/snap, area resize, and the projection view. Worth a manual pass on `npm run dev`.
 - Deliberately omitted: `CONTRIBUTING.md` and its issue-before-PR rule (cookbook-maker has them because it is feature-complete; this project is not).
