@@ -1,30 +1,21 @@
 import { num as numU, fmt as fmtU, parseLen as parseLenU, parseBulk as parseBulkU, unitWord as unitWordU } from './js/units.js';
 import * as HS from './js/hangSheet.js';
 import { encodeSpec as encodePlan, decodeSpec as decodePlan } from './js/shareCode.js';
+import { createStore } from './js/store.js';
 import * as L from './js/layout.js';
 import { homography, inv3, mapPt } from './js/homography.js';
 
 const K = 20;                       // wall-plane pixels per inch
-const KEY = 'galleryWallPlanner.v1';
 const $ = s => document.querySelector(s);
 const { clamp, r16 } = L;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- state ---------- */
-const defaults = () => ({
-  unit:'in', wall:{w:120,h:96}, area:null, gap:2, grid:0, hook:2, hooks:true, snap:true,
-  frames:[], sel:null, locked:false, nextId:1,
-  cal:{set:false, corners:[[.12,.12],[.88,.12],[.88,.88],[.12,.88]], custom:false, ref:{x:0,y:0,w:48,h:36}},
-  proj:{style:'outline', labels:true, grid:false, edge:true, mono:false}
-});
-let S = defaults();
-let fresh = true;
-try {
-  const raw = localStorage.getItem(KEY);
-  if (raw) { const d = JSON.parse(raw); S = Object.assign(defaults(), d); S.cal = Object.assign(defaults().cal, d.cal||{}); S.proj = Object.assign(defaults().proj, d.proj||{}); fresh = false; }
-} catch(e) {}
-const T = { mode:'design', calibrating:false, uiHidden:false, drag:null, guides:[], hist:[], hi:-1, num:new Map(), bad:new Map(), hsel:null, hdrag:null, u:1, cpTimer:null };
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+const store = createStore();
+const S = store.state;
+const fresh = store.fresh;
+const T = { mode:'design', calibrating:false, uiHidden:false, drag:null, guides:[], num:new Map(), bad:new Map(), hsel:null, hdrag:null, u:1, cpTimer:null };
+const save = () => store.save();
 
 
 const num = v => numU(v, S.unit);
@@ -217,7 +208,7 @@ function renderControls(){
   $('#calCustom').checked=S.cal.custom; $('#calRef').hidden=!S.cal.custom;
   const r=S.cal.ref; $('#rX').value=num(r.x); $('#rY').value=num(r.y); $('#rW').value=num(r.w); $('#rH').value=num(r.h);
   $('#lockBadge').hidden=!S.locked; $('#lockBanner').hidden=!S.locked;
-  $('#bUndo').disabled=T.hi<=0||S.locked; $('#bRedo').disabled=T.hi>=T.hist.length-1||S.locked;
+  $('#bUndo').disabled=!store.canUndo(); $('#bRedo').disabled=!store.canRedo();
   $('#bCommit').textContent=S.locked?'Unlock to keep editing':'Lock layout';
   ptool.hidden=!(T.mode==='project'&&!T.uiHidden);
   const chips=$('#chips');
@@ -227,19 +218,11 @@ function renderControls(){
 function renderAll(){ applyClasses(); layout(); renderFrames(); renderList(); renderProps(); renderControls(); }
 
 /* ---------- history ---------- */
-const snap=()=>JSON.stringify({wall:S.wall,area:S.area,frames:S.frames,nextId:S.nextId});
-function checkpoint(){
-  const s=snap(); if (s===T.hist[T.hi]){ save(); return; }
-  T.hist=T.hist.slice(0,T.hi+1); T.hist.push(s); if (T.hist.length>150) T.hist.shift(); T.hi=T.hist.length-1; save(); renderControls();
-}
+const checkpoint = () => store.checkpoint();
+store.subscribe(ev=>{ if (ev==='restore') renderAll(); else renderControls(); });
 function sched(){ clearTimeout(T.cpTimer); T.cpTimer=setTimeout(()=>{ checkpoint(); renderList(); renderProps(); },450); }
-function restore(i){
-  const d=JSON.parse(T.hist[i]); S.wall=d.wall; S.area=d.area||null; S.frames=d.frames; S.nextId=d.nextId; T.hi=i;
-  if (!S.frames.some(f=>f.id===S.sel)) S.sel=null;
-  save(); renderAll();
-}
-const undo=()=>{ if (T.hi>0) restore(T.hi-1); };
-const redo=()=>{ if (T.hi<T.hist.length-1) restore(T.hi+1); };
+const undo = () => store.undo();
+const redo = () => store.redo();
 
 /* ---------- actions ---------- */
 let toastT;
@@ -525,6 +508,6 @@ if (fresh){
   arrange(false);
 }
 S.sel = S.frames.some(f=>f.id===S.sel) ? S.sel : null;
-T.hist=[snap()]; T.hi=0;
+store.resetHistory();
 renderAll();
 if (fresh) save();
