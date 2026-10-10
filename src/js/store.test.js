@@ -92,3 +92,42 @@ describe('lock', () => {
     expect(createStore({ storage: st }).state.locked).toBe(true)
   })
 })
+
+describe('snapshot API', () => {
+  const mk = () => { const s = createStore({ storage: memStorage() }); s.state.frames = [frame(1), frame(2)]; s.state.nextId = 3; s.resetHistory(); return s }
+  const other = () => ({ wall: { w: 60, h: 40 }, area: { x: 1, y: 1, w: 30, h: 20 }, frames: [frame(9)], nextId: 10 })
+
+  it('snapshot is a deep copy of the layout only', () => {
+    const s = mk(), d = s.snapshot()
+    expect(Object.keys(d).sort()).toEqual(['area', 'frames', 'nextId', 'wall'])
+    d.frames[0].x = 99; d.wall.w = 1
+    expect(s.state.frames[0].x).toBe(1); expect(s.state.wall.w).toBe(120)
+  })
+  it('apply replaces the layout and is undoable and redoable', () => {
+    const s = mk(), before = s.snapshot()
+    s.applySnapshot(other())
+    expect(s.state.wall).toEqual({ w: 60, h: 40 }); expect(s.state.frames.map(f => f.id)).toEqual([9]); expect(s.state.nextId).toBe(10)
+    expect(s.undo()).toBe(true); expect(s.snapshot()).toEqual(before)
+    expect(s.redo()).toBe(true); expect(s.state.frames.map(f => f.id)).toEqual([9])
+  })
+  it('applying the identical layout adds no history', () => {
+    const s = mk(); s.applySnapshot(s.snapshot())
+    expect(s.canUndo()).toBe(false)
+  })
+  it('clears a stale selection but keeps a valid one', () => {
+    const s = mk(); s.state.sel = 1; s.applySnapshot(other())
+    expect(s.state.sel).toBeNull()
+    const t = mk(); t.state.sel = 2; t.applySnapshot({ ...t.snapshot(), nextId: 5 })
+    expect(t.state.sel).toBe(2)
+  })
+  it('does not alias the applied snapshot', () => {
+    const s = mk(), d = other(); s.applySnapshot(d); d.frames[0].x = 77
+    expect(s.state.frames[0].x).toBe(9)
+  })
+  it('leaves device settings alone and persists', () => {
+    const st = memStorage(), s = createStore({ storage: st }); s.state.unit = 'cm'; s.state.cal.set = true
+    s.applySnapshot(other())
+    expect([s.state.unit, s.state.cal.set]).toEqual(['cm', true])
+    expect(JSON.parse(st.m[KEY]).wall).toEqual({ w: 60, h: 40 })
+  })
+})

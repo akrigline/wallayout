@@ -17,7 +17,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 ## Architecture
 
 - `index.html` is markup only; `src/main.js` imports CSS from `src/css/` (tokens, layout, wall, projection, responsive: keep that order, responsive must stay last) and boots the UI.
-- Pure, DOM-free logic in `src/js/`, each with a sibling `*.test.js`: `units`, `homography`, `layout` (conflicts, snapping, arrange), `hangSheet`, `shareCode` (`GWP1:` codes, must stay byte-compatible), `store` (state, localStorage persistence, 150-deep undo, lock).
+- Pure, DOM-free logic in `src/js/`, each with a sibling `*.test.js`: `units`, `homography`, `layout` (conflicts, snapping, arrange), `hangSheet`, `shareCode` (`GWP1:` codes, must stay byte-compatible), `store` (state, localStorage persistence, 150-deep undo, lock, `snapshot()`/`applySnapshot()` for undoable layout replacement), `layouts` (named saved layouts in their own key `galleryWallPlanner.layouts.v1`, separate from the working plan `galleryWallPlanner.v1`; plus `thumbnailSvg`).
 - DOM code in `src/ui/`: `ctx.js` (shared `S`/`T`/store/element refs, `V` holds the current homography), `render.js`, `actions.js`, `modals.js`, `projection.js`, `interaction.js`, `toast.js`. The modules import each other circularly, which is fine because nothing runs at import time except `ctx.js`; listeners are registered by the `init*()` functions called from `main.js`.
 - `src/smoke.test.js` boots the whole app in happy-dom (it must drop document-level listeners between boots) and drives clicks, keys and projection mode. happy-dom has no layout, so drag/snap and projection visuals need a real browser; the Chrome devtools tool was flaky, headless `chrome-headless-shell --screenshot` from `~/.cache/ms-playwright` works.
 

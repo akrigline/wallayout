@@ -22,6 +22,7 @@
     </div>
     <div class="hgrp">
       <button data-act="sheet">Hang sheet</button>
+      <button data-act="layouts">Layouts</button>
       <button data-act="share">Share</button>
       <button data-act="project" class="primary">Project on wall</button>
     </div>
@@ -151,6 +152,19 @@
       <label>Load a plan someone sent you <textarea id="codeIn" rows="4" placeholder="Paste a code starting with GWP1:"></textarea></label>
       <div class="btnrow"><button data-act="importCode">Load plan</button></div>
       <p class="note">Loading replaces the current wall and frames. You can undo it afterward.</p>
+    </div>
+  </div>
+</div>
+<div id="layouts" class="modal" hidden>
+  <div class="mbox">
+    <div class="mh"><h2>Saved layouts</h2><button data-act="closeLayouts">Close</button></div>
+    <div id="layoutsBody">
+      <div class="lsave">
+        <label>Name <input id="layoutName" placeholder="Optional, e.g. Salon wall" autocomplete="off"></label>
+        <button class="primary" data-act="saveLayout">Save current layout</button>
+      </div>
+      <p id="layoutsLock" class="note" hidden>The layout is locked. Unlock it to load or update a saved layout.</p>
+      <div id="layoutList"></div>
     </div>
   </div>
 </div>

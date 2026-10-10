@@ -1,9 +1,9 @@
-import { $, K, S, T, area, clamp, normArea, parseBulk, parseLen, r16, save, stage } from './ctx.js';
+import { $, K, S, T, area, clamp, layouts, normArea, parseBulk, parseLen, r16, save, stage, store } from './ctx.js';
 import { locked, toast } from './toast.js';
 import { initCorners, setMode, toggleFullscreen } from './projection.js';
 import { checkpoint, hit, layout, renderAll, renderArea, renderControls, renderFrames, renderList, renderProps, sched, toWall, updateXY } from './render.js';
 import { addFrame, arrange, centerGroup, redo, sel, setUnit, undo } from './actions.js';
-import { copyText, decodeSpec, openShare, openSheet, sheetText } from './modals.js';
+import { copyText, decodeSpec, openLayouts, openShare, openSheet, renderLayouts, sheetText } from './modals.js';
 import * as L from '../js/layout.js';
 
 export function snapMove(f,nx,ny,free){
@@ -46,6 +46,36 @@ export function initInteraction(){
         let d; try { d=decodeSpec($('#codeIn').value); } catch(err){ toast('That code didn\'t load. Paste the whole thing, starting with GWP1:'); break; }
         S.unit=d.unit; S.wall=d.wall; S.area=d.area; normArea(); S.gap=d.gap; S.hook=d.hook; S.frames=d.frames; S.nextId=d.frames.length+1; S.sel=null;
         checkpoint(); renderAll(); $('#share').hidden=true; toast(`Loaded ${d.frames.length} frame${d.frames.length===1?'':'s'}. Undo brings your old plan back.`); break;
+      }
+      case 'layouts': openLayouts(); break;
+      case 'closeLayouts': $('#layouts').hidden=true; break;
+      case 'saveLayout': {
+        const e=layouts.save($('#layoutName').value,store.snapshot());
+        if (!e){ toast('Couldn\'t save: browser storage is full or unavailable.'); break; }
+        $('#layoutName').value=''; renderLayouts(); toast(`Saved "${e.name}".`); break;
+      }
+      case 'loadLayout': case 'updateLayout': case 'renameLayout': case 'deleteLayout': {
+        const id=b.closest('[data-id]')?.dataset.id, e=id&&layouts.get(id); if (!e){ renderLayouts(); break; }
+        if (a==='loadLayout'){
+          if (locked()) break;
+          store.applySnapshot(e.snap); renderAll(); toast(`Loaded "${e.name}". Undo brings your previous layout back.`);
+        } else if (a==='updateLayout'){
+          if (locked()) break;
+          if (!window.confirm(`Replace "${e.name}" with the current layout?`)) break;
+          if (!layouts.update(id,store.snapshot())) toast('Couldn\'t update: browser storage is full or unavailable.');
+          else toast(`Updated "${e.name}".`);
+          renderLayouts();
+        } else if (a==='renameLayout'){
+          const v=window.prompt('Rename layout',e.name); if (v===null) break;
+          if (!layouts.rename(id,v)) toast('Couldn\'t rename: browser storage is full or unavailable.');
+          renderLayouts();
+        } else {
+          if (!window.confirm(`Delete "${e.name}"? This can't be undone.`)) break;
+          if (!layouts.remove(id)) toast('Couldn\'t delete: browser storage is full or unavailable.');
+          else toast(`Deleted "${e.name}".`);
+          renderLayouts();
+        }
+        break;
       }
       case 'closeSheet': $('#sheet').hidden=true; break;
       case 'copySheet': copyText(sheetText()); break;
@@ -171,7 +201,7 @@ export function initInteraction(){
   document.addEventListener('keydown',e=>{
     const tag=(e.target.tagName||'').toLowerCase();
     if (tag==='input'||tag==='textarea'||tag==='select') return;
-    if (e.key==='Escape'){ if (!$('#share').hidden) $('#share').hidden=true; else if (!$('#sheet').hidden) $('#sheet').hidden=true; else if (T.mode==='project') setMode('design'); return; }
+    if (e.key==='Escape'){ if (!$('#layouts').hidden) $('#layouts').hidden=true; else if (!$('#share').hidden) $('#share').hidden=true; else if (!$('#sheet').hidden) $('#sheet').hidden=true; else if (T.mode==='project') setMode('design'); return; }
     if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); if(!S.locked) e.shiftKey?redo():undo(); return; }
     if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); if(!S.locked) redo(); return; }
     if (T.mode==='project'){

@@ -125,6 +125,98 @@ describe('sheet, share and lock', () => {
   })
 })
 
+describe('saved layouts', () => {
+  const cards = () => [...document.querySelectorAll('#layoutList .lcard')]
+  const act = (card, a) => card.querySelector(`[data-act="${a}"]`).click()
+  const names = () => cards().map(c => c.querySelector('.lname').textContent)
+  const stubDialogs = ({ confirm = true, prompt = null } = {}) => {
+    window.confirm = () => confirm; window.prompt = () => prompt
+  }
+
+  it('saves, loads, undoes a load, updates, renames and deletes', async () => {
+    await boot(null)
+    stubDialogs()
+    click('header [data-act="layouts"]')
+    expect(document.querySelector('#layouts').hidden).toBe(false)
+    expect(cards()).toHaveLength(0)
+    expect(document.querySelector('#layoutList').textContent).toMatch(/No saved layouts/)
+
+    document.querySelector('#layoutName').value = '  Salon wall '
+    click('[data-act="saveLayout"]')
+    expect(names()).toEqual(['Salon wall'])
+    expect(cards()[0].querySelector('svg.thumb')).not.toBeNull()
+    expect(cards()[0].textContent).toMatch(/7 frames/)
+    expect(JSON.parse(localStorage.getItem('galleryWallPlanner.layouts.v1'))).toHaveLength(1)
+
+    click('[data-act="closeLayouts"]')
+    expect(document.querySelector('#layouts').hidden).toBe(true)
+    click('[data-act="clearAll"]'); click('[data-act="clearAll"]')
+    expect(frames()).toBe(0)
+
+    click('header [data-act="layouts"]')
+    act(cards()[0], 'loadLayout')
+    expect(frames()).toBe(7)
+    expect(toastText()).toMatch(/Loaded "Salon wall"/)
+    click('#bUndo'); expect(frames()).toBe(0)
+    click('#bRedo'); expect(frames()).toBe(7)
+
+    // update from a changed layout
+    click('[data-act="chip"]'); expect(frames()).toBe(8)
+    click('header [data-act="layouts"]')
+    act(cards()[0], 'updateLayout')
+    expect(cards()[0].textContent).toMatch(/8 frames/)
+    stubDialogs({ confirm: false })
+    click('[data-act="clearAll"]'); click('[data-act="clearAll"]')
+    act(cards()[0], 'updateLayout')
+    expect(cards()[0].textContent).toMatch(/8 frames/)
+
+    // rename, then rename to blank gets a default
+    stubDialogs({ prompt: 'Hall' }); act(cards()[0], 'renameLayout')
+    expect(names()).toEqual(['Hall'])
+    stubDialogs({ prompt: '' }); act(cards()[0], 'renameLayout')
+    expect(names()).toEqual(['Layout 1'])
+
+    // delete: declined then confirmed
+    stubDialogs({ confirm: false }); act(cards()[0], 'deleteLayout')
+    expect(cards()).toHaveLength(1)
+    stubDialogs(); act(cards()[0], 'deleteLayout')
+    expect(cards()).toHaveLength(0)
+    expect(errors).toEqual([])
+  })
+
+  it('refuses load and update while locked but still allows save', async () => {
+    await boot(null)
+    stubDialogs()
+    click('header [data-act="layouts"]')
+    click('[data-act="saveLayout"]')
+    click('[data-act="closeLayouts"]')
+    click('[data-act="clearAll"]'); click('[data-act="clearAll"]')
+    click('header [data-act="sheet"]'); click('#bCommit')
+    expect(saved().locked).toBe(true)
+
+    click('header [data-act="layouts"]')
+    expect(document.querySelector('#layoutsLock').hidden).toBe(false)
+    const card = cards()[0]
+    expect(card.querySelector('[data-act="loadLayout"]').disabled).toBe(true)
+    expect(card.querySelector('[data-act="updateLayout"]').disabled).toBe(true)
+    act(card, 'loadLayout')
+    expect(frames()).toBe(0)
+
+    click('[data-act="saveLayout"]')
+    expect(names()).toEqual(['Layout 2', 'Layout 1'])
+    expect(errors).toEqual([])
+  })
+
+  it('toasts when storage rejects a save and shows no phantom entry', async () => {
+    await boot(null)
+    click('header [data-act="layouts"]')
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('quota') })
+    try { click('[data-act="saveLayout"]') } finally { spy.mockRestore() }
+    expect(toastText()).toMatch(/Couldn't save/)
+    expect(cards()).toHaveLength(0)
+  })
+})
+
 describe('projection', () => {
   it('enters projection mode, calibrates, and exits', async () => {
     await boot(null)
