@@ -51,12 +51,20 @@ export function createStore({ storage = defaultStorage(), key = 'galleryWallPlan
     if (!state.frames.some(f => f.id === state.sel)) state.sel = null;
     save(); emit('restore');
   }
+  function snapshot() { return JSON.parse(snap()); }
+  // Replace the layout with a saved snapshot as one undoable step. Does not check the lock; callers do.
+  function applySnapshot(d) {
+    const c = JSON.parse(JSON.stringify(d));
+    state.wall = c.wall; state.area = c.area || null; state.frames = c.frames; state.nextId = c.nextId;
+    if (!state.frames.some(f => f.id === state.sel)) state.sel = null;
+    checkpoint();
+  }
   const canUndo = () => !state.locked && hi > 0;
   const canRedo = () => !state.locked && hi < hist.length - 1;
 
   resetHistory();
   return {
-    state, fresh, save, checkpoint, resetHistory, canUndo, canRedo,
+    state, fresh, save, checkpoint, resetHistory, canUndo, canRedo, snapshot, applySnapshot,
     undo() { if (!canUndo()) return false; restore(hi - 1); return true; },
     redo() { if (!canRedo()) return false; restore(hi + 1); return true; },
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },

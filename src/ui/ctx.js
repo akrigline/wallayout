@@ -1,4 +1,5 @@
 import { createStore } from '../js/store.js';
+import { createLayouts } from '../js/layouts.js';
 import * as L from '../js/layout.js';
 import { num as numU, fmt as fmtU, parseLen as parseLenU, parseBulk as parseBulkU, unitWord as unitWordU } from '../js/units.js';
 
@@ -9,6 +10,7 @@ export const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt
 /* ---------- state ---------- */
 export const store = createStore();
 export const S = store.state;
+export const layouts = createLayouts();
 export const fresh = store.fresh;
 export const T = { mode:'design', calibrating:false, uiHidden:false, drag:null, guides:[], num:new Map(), bad:new Map(), hsel:null, hdrag:null, u:1, cpTimer:null };
 export const save = () => store.save();
