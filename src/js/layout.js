@@ -6,6 +6,8 @@ export const r16 = v => Math.round(v * 16) / 16;
 
 const EPS = 1e-3;
 const isFrame = f => f.kind !== 'obstacle';
+// Hidden pieces and obstacles never conflict; hidden pieces are inert everywhere.
+const isLive = f => isFrame(f) && !f.hidden;
 
 export const areaOf = p => p.area || { x: 0, y: 0, w: p.wall.w, h: p.wall.h };
 
@@ -22,14 +24,16 @@ export function normArea(area, wall) {
 export function computeBad(p) {
   const bad = new Map(), W = p.wall.w, H = p.wall.h, e = EPS, F = p.frames;
   for (const f of F) {
+    if (!isLive(f)) continue;
     if (f.x < -e || f.y < -e || f.x + f.w > W + e || f.y + f.h > H + e) bad.set(f.id, 'Extends past the wall');
   }
   if (p.area) {
     const a = p.area;
-    for (const f of F) if (isFrame(f) && !bad.has(f.id) && (f.x < a.x - e || f.y < a.y - e || f.x + f.w > a.x + a.w + e || f.y + f.h > a.y + a.h + e)) bad.set(f.id, 'Outside the gallery area');
+    for (const f of F) if (isLive(f) && !bad.has(f.id) && (f.x < a.x - e || f.y < a.y - e || f.x + f.w > a.x + a.w + e || f.y + f.h > a.y + a.h + e)) bad.set(f.id, 'Outside the gallery area');
   }
   for (let i = 0; i < F.length; i++) for (let j = i + 1; j < F.length; j++) {
     const a = F[i], b = F[j];
+    if (!isLive(a) || !isLive(b)) continue;
     if (a.x < b.x + b.w - e && b.x < a.x + a.w - e && a.y < b.y + b.h - e && b.y < a.y + a.h - e) {
       if (!bad.has(a.id)) bad.set(a.id, 'Overlaps ' + b.name);
       if (!bad.has(b.id)) bad.set(b.id, 'Overlaps ' + a.name);
@@ -42,7 +46,7 @@ export function computeBad(p) {
 export function gapsOf(frames, f) {
   let L = null, R = null, Tp = null, B = null; const m = (a, g) => a == null ? g : Math.min(a, g);
   for (const o of frames) {
-    if (o === f) continue;
+    if (o === f || o.hidden) continue;
     const ovY = f.y < o.y + o.h && o.y < f.y + f.h, ovX = f.x < o.x + o.w && o.x < f.x + f.w;
     if (ovY) { if (o.x + o.w <= f.x + 1e-6) L = m(L, f.x - (o.x + o.w)); else if (o.x >= f.x + f.w - 1e-6) R = m(R, o.x - (f.x + f.w)); }
     if (ovX) { if (o.y + o.h <= f.y + 1e-6) Tp = m(Tp, f.y - (o.y + o.h)); else if (o.y >= f.y + f.h - 1e-6) B = m(B, o.y - (f.y + f.h)); }
@@ -50,17 +54,23 @@ export function gapsOf(frames, f) {
   return { L, R, T: Tp, B };
 }
 
-// Topmost frame under the point.
+// Topmost visible frame under the point; obstacles only when no frame is there.
 export function hit(frames, x, y) {
-  for (let i = frames.length - 1; i >= 0; i--) { const f = frames[i]; if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) return f; }
+  for (const obstacles of [false, true]) {
+    for (let i = frames.length - 1; i >= 0; i--) {
+      const f = frames[i];
+      if (!f.hidden && (f.kind === 'obstacle') === obstacles && x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) return f;
+    }
+  }
   return null;
 }
 
-// Snapped position for dragging `f` toward (nx, ny). `thr` is the snap distance in inches.
-export function snapMove(p, f, nx, ny, free, thr) {
+// Snapped position for dragging `f` (a frame, or a group's {w,h} box) toward (nx, ny). `thr` is the snap distance in inches.
+// `exclude` is an optional Set of frames (a dragged group's members) that are not snap targets.
+export function snapMove(p, f, nx, ny, free, thr, exclude) {
   const W = p.wall.w, H = p.wall.h, g = p.gap, guides = [];
   if (!free && p.snap) {
-    const O = p.frames.filter(o => o !== f);
+    const O = p.frames.filter(o => o !== f && !o.hidden && !(exclude && exclude.has(o)));
     const pick = (mine, cands, axis) => {
       let best = thr, delta = null, pos = null;
       for (let i = 0; i < mine.length; i++) for (const t of cands[i]) {
@@ -89,14 +99,14 @@ export function snapMove(p, f, nx, ny, free, thr) {
 export function findSpot(p, w, h) {
   const A = areaOf(p), g = p.gap / 2;
   for (let y = A.y + p.gap; y + h <= A.y + A.h - p.gap + 1e-6; y += 1) for (let x = A.x + p.gap; x + w <= A.x + A.w - p.gap + 1e-6; x += 1) {
-    if (!p.frames.some(o => x < o.x + o.w + g && o.x < x + w + g && y < o.y + o.h + g && o.y < y + h + g)) return [x, y];
+    if (!p.frames.some(o => !o.hidden && x < o.x + o.w + g && o.x < x + w + g && y < o.y + o.h + g && o.y < y + h + g)) return [x, y];
   }
   return [clamp(A.x + (A.w - w) / 2, 0, Math.max(0, p.wall.w - w)), clamp(A.y + (A.h - h) / 2, 0, Math.max(0, p.wall.h - h))];
 }
 
-// Row-pack all non-obstacle frames. Returns {moves:[{id,x,y}], overflow}; moves is empty if there are no frames.
+// Row-pack all visible non-obstacle frames. Returns {moves:[{id,x,y}], overflow}; moves is empty if there are no frames.
 export function arrange(p, { shuffle = false, rng = Math.random } = {}) {
-  const fr = p.frames.filter(isFrame); if (!fr.length) return { moves: [], overflow: false };
+  const fr = p.frames.filter(isLive); if (!fr.length) return { moves: [], overflow: false };
   const Ar = areaOf(p), W = Ar.w, H = Ar.h, g = p.gap; const order = fr.slice();
   if (shuffle) { for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } }
   else order.sort((a, b) => b.w * b.h - a.w * a.h);
@@ -117,9 +127,9 @@ export function arrange(p, { shuffle = false, rng = Math.random } = {}) {
   return { moves, overflow: th > H + 1e-6 };
 }
 
-// Moves that center the bounding box of all non-obstacle frames in the area.
+// Moves that center the bounding box of all visible non-obstacle frames in the area.
 export function centerGroup(p) {
-  const fr = p.frames.filter(isFrame); if (!fr.length) return [];
+  const fr = p.frames.filter(isLive); if (!fr.length) return [];
   const x0 = Math.min(...fr.map(f => f.x)), x1 = Math.max(...fr.map(f => f.x + f.w)), y0 = Math.min(...fr.map(f => f.y)), y1 = Math.max(...fr.map(f => f.y + f.h));
   const Ar = areaOf(p), dx = Ar.x + Ar.w / 2 - (x0 + x1) / 2, dy = Ar.y + Ar.h / 2 - (y0 + y1) / 2;
   return fr.map(f => ({ id: f.id, x: r16(f.x + dx), y: r16(f.y + dy) }));

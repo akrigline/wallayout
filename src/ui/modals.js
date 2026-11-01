@@ -8,11 +8,11 @@ import { encodeSpec as encodePlan, decodeSpec as decodePlan } from '../js/shareC
 export const sheetRows = () => HS.sheetRows(S);
 export const sheetText = () => HS.sheetText(S,S.unit);
 export function openSheet(){
-  const rows=sheetRows(), bad=T.bad.size;
+  const rows=sheetRows(), bad=T.bad.size, hidN=HS.hiddenCount(S);
   $('#sheetBody').innerHTML=(bad?`<p style="color:var(--bad)">${HS.conflictNotice(bad)}</p>`:'')+
-    `<p>Wall ${fmt(S.wall.w)} × ${fmt(S.wall.h)}. Hook sits ${fmt(S.hook)} below each frame's top edge. Measure from the wall's left edge and from the floor.</p>`+
-    (rows.length?`<table><thead><tr><th>#</th><th>Name</th><th>Size</th><th>Left edge</th><th>Top (from ceiling)</th><th>Bottom (from floor)</th><th>Hook from left</th><th>Hook from floor</th></tr></thead><tbody>`+
-    rows.map(r=>`<tr><td>${r.n}</td><td>${esc(r.f.name)}</td><td>${fmt(r.f.w)} × ${fmt(r.f.h)}</td><td>${fmt(r.left)}</td><td>${fmt(r.top)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.hx)}</td><td>${fmt(r.hfloor)}</td></tr>`).join('')+`</tbody></table>`:'<p>No frames on the wall yet.</p>');
+    (hidN?`<p>${hidN} hidden piece${hidN>1?'s are':' is'} not listed.</p>`:'')+`<p>Wall ${fmt(S.wall.w)} × ${fmt(S.wall.h)}. Default hook sits ${fmt(S.hook)} below a frame's top edge, and frames with their own hooks list each one (1, 2, ...). Measure from the wall's left edge and from the floor.</p>`+
+    (rows.length?`<table><thead><tr><th>#</th><th>Name</th><th>Size</th><th>Left edge</th><th>Top (from ceiling)</th><th>Bottom (from floor)</th><th>Hook(s) from left</th><th>Hook(s) from floor</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr><td>${r.n}</td><td>${esc(r.f.name)}</td><td>${fmt(r.f.w)} × ${fmt(r.f.h)}</td><td>${fmt(r.left)}</td><td>${fmt(r.top)}</td><td>${fmt(r.floor)}</td><td>${r.hooks.map((h,k)=>(r.hooks.length>1?'<b>'+(k+1)+'</b> ':'')+fmt(h.hx)).join('<br>')}</td><td>${r.hooks.map((h,k)=>(r.hooks.length>1?'<b>'+(k+1)+'</b> ':'')+fmt(h.hfloor)).join('<br>')}</td></tr>`).join('')+`</tbody></table>`:'<p>No frames on the wall yet.</p>');
   $('#sheet').hidden=false; renderControls();
 }
 export async function copyText(t){
@@ -24,7 +24,7 @@ export async function copyText(t){
 
 /* ---------- share code ---------- */
 export const encodeSpec = () => encodePlan(S);
-export const decodeSpec = txt => decodePlan(txt,{gap:S.gap,hook:S.hook});
+export const decodeSpec = txt => decodePlan(txt,{gap:S.gap,hook:S.hook,margin:S.margin});
 export function openShare(){ $('#codeOut').value=encodeSpec(); $('#codeIn').value=''; $('#share').hidden=false; }
 
 /* ---------- saved layouts ---------- */

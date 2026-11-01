@@ -131,3 +131,29 @@ describe('snapshot API', () => {
     expect(JSON.parse(st.m[KEY]).wall).toEqual({ w: 60, h: 40 })
   })
 })
+
+describe('margin settings', () => {
+  it('defaults margin 3 and projection margins on', () => {
+    const s = createStore({ storage: null })
+    expect(s.state.margin).toBe(3)
+    expect(s.state.proj.margin).toBe(true)
+  })
+  it('older saves take the defaults and newer ones are kept', () => {
+    const store = (v) => ({ getItem: () => JSON.stringify(v), setItem() {} })
+    const old = createStore({ storage: store({ gap: 4, proj: { style: 'wash' } }) })
+    expect(old.state).toMatchObject({ margin: 3, gap: 4 })
+    expect(old.state.proj).toMatchObject({ style: 'wash', margin: true })
+    const kept = createStore({ storage: store({ margin: 5, proj: { margin: false } }) })
+    expect(kept.state.margin).toBe(5)
+    expect(kept.state.proj.margin).toBe(false)
+  })
+  it('keeps hooks and hidden through undo', () => {
+    const s = createStore({ storage: null })
+    s.state.frames = [{ id: 1, name: 'A', x: 0, y: 0, w: 5, h: 5, hue: 1, kind: 'frame' }]; s.state.nextId = 2; s.resetHistory()
+    s.state.frames[0].hooks = [{ x: 1, y: 1 }]; s.state.frames[0].hidden = true; s.checkpoint()
+    s.undo()
+    expect(s.state.frames[0].hooks).toBeUndefined(); expect(s.state.frames[0].hidden).toBeUndefined()
+    s.redo()
+    expect(s.state.frames[0]).toMatchObject({ hooks: [{ x: 1, y: 1 }], hidden: true })
+  })
+})
