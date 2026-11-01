@@ -3,10 +3,10 @@
 export const HISTORY_LIMIT = 150;
 
 export const defaults = () => ({
-  unit: 'in', wall: { w: 120, h: 96 }, area: null, gap: 2, grid: 0, hook: 2, hooks: true, snap: true,
+  unit: 'in', wall: { w: 120, h: 96 }, area: null, margin: 3, gap: 2, grid: 0, hook: 2, hooks: true, snap: true,
   frames: [], sel: null, locked: false, nextId: 1,
   cal: { set: false, corners: [[.12, .12], [.88, .12], [.88, .88], [.12, .88]], custom: false, ref: { x: 0, y: 0, w: 48, h: 36 } },
-  proj: { style: 'outline', labels: true, grid: false, edge: true, mono: false },
+  proj: { style: 'outline', margin: true, labels: true, grid: false, edge: true, mono: false },
 });
 
 // Merge saved state over fresh defaults, including nested cal and proj.
@@ -51,12 +51,20 @@ export function createStore({ storage = defaultStorage(), key = 'galleryWallPlan
     if (!state.frames.some(f => f.id === state.sel)) state.sel = null;
     save(); emit('restore');
   }
+  function snapshot() { return JSON.parse(snap()); }
+  // Replace the layout with a saved snapshot as one undoable step. Does not check the lock; callers do.
+  function applySnapshot(d) {
+    const c = JSON.parse(JSON.stringify(d));
+    state.wall = c.wall; state.area = c.area || null; state.frames = c.frames; state.nextId = c.nextId;
+    if (!state.frames.some(f => f.id === state.sel)) state.sel = null;
+    checkpoint();
+  }
   const canUndo = () => !state.locked && hi > 0;
   const canRedo = () => !state.locked && hi < hist.length - 1;
 
   resetHistory();
   return {
-    state, fresh, save, checkpoint, resetHistory, canUndo, canRedo,
+    state, fresh, save, checkpoint, resetHistory, canUndo, canRedo, snapshot, applySnapshot,
     undo() { if (!canUndo()) return false; restore(hi - 1); return true; },
     redo() { if (!canRedo()) return false; restore(hi + 1); return true; },
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },

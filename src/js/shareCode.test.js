@@ -67,3 +67,44 @@ describe('sanitizing', () => {
     expect([d.gap, d.hook, d.area]).toEqual([7, 9, null])
   })
 })
+
+describe('margin, hooks and hidden', () => {
+  const json = code => JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))))
+  const d3 = { gap: 2, hook: 2, margin: 3 }
+  it('round-trips margin, hooks and hidden', () => {
+    const p = mk([fr(1, { hooks: [{ x: 2, y: 1 }, { x: 6, y: 1 }], hidden: true }), fr(2)], { margin: 5 })
+    const d = decodeSpec(encodeSpec(p), d3)
+    expect(d.margin).toBe(5)
+    expect(d.frames[0]).toMatchObject({ hooks: [{ x: 2, y: 1 }, { x: 6, y: 1 }], hidden: true })
+    expect(d.frames[1].hooks).toBeUndefined()
+    expect(d.frames[1].hidden).toBeUndefined()
+  })
+  it('omits hooks and hidden from plain frames so they encode as before', () => {
+    const f = json(encodeSpec(mk([fr(1)]))).frames[0]
+    expect(Object.keys(f)).toEqual(['name', 'w', 'h', 'x', 'y', 'hue', 'kind'])
+  })
+  it('still decodes codes made before these fields existed', () => {
+    const old = enc({ v: 1, unit: 'in', wall: { w: 100, h: 80 }, area: null, gap: 1, hook: 3, frames: [{ name: 'A', w: 5, h: 5, x: 1, y: 1, hue: 10, kind: 'frame' }] })
+    const d = decodeSpec(old, d3)
+    expect(d.margin).toBe(3)
+    expect(d.frames[0].hooks).toBeUndefined()
+    expect(d.frames[0].hidden).toBeUndefined()
+  })
+  it('takes the caller\'s margin when the code\'s is missing, negative or not a number', () => {
+    for (const margin of [undefined, -1, 'x']) {
+      const code = enc({ v: 1, wall: { w: 10, h: 10 }, margin, frames: [] })
+      expect(decodeSpec(code, d3).margin).toBe(3)
+    }
+  })
+  it('sanitizes hooks and only hides on exactly true', () => {
+    const code = enc({ v: 1, wall: { w: 100, h: 80 }, frames: [
+      { name: 'A', w: 10, h: 10, x: 0, y: 0, hooks: [{ x: 'a', y: 1 }, { x: 50, y: -2 }, { x: 4, y: 4 }], hidden: 'yes' },
+      { name: 'B', w: 10, h: 10, x: 0, y: 0, hooks: [{ x: 'a' }], hidden: true },
+    ] })
+    const [a, b] = decodeSpec(code, d3).frames
+    expect(a.hooks).toEqual([{ x: 10, y: 0 }, { x: 4, y: 4 }])
+    expect(a.hidden).toBeUndefined()
+    expect(b.hooks).toBeUndefined()
+    expect(b.hidden).toBe(true)
+  })
+})
