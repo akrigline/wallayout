@@ -126,3 +126,61 @@ describe('centerGroup', () => {
     expect(areaOf(plan([], { area: { x: 1, y: 2, w: 3, h: 4 } }))).toEqual({ x: 1, y: 2, w: 3, h: 4 })
   })
 })
+
+describe('hidden pieces and obstacles', () => {
+  it('never flags obstacles or hidden pieces for wall, overlap or area conflicts', () => {
+    const p = plan([
+      fr(1, 0, 0, 10, 10), fr(2, 5, 5, 10, 10, { hidden: true }), fr(3, 110, 0, 20, 10, { kind: 'obstacle' }), fr(4, 0, 0, 10, 10, { kind: 'obstacle' }),
+      fr(5, 115, 0, 20, 10, { hidden: true }),
+    ], { area: { x: 0, y: 0, w: 60, h: 60 } })
+    expect(computeBad(p).size).toBe(0)
+  })
+  it('still flags visible frames overlapping each other beside a hidden one', () => {
+    const bad = computeBad(plan([fr(1, 0, 0, 10, 10), fr(2, 5, 5, 10, 10), fr(3, 5, 5, 10, 10, { hidden: true })]))
+    expect(bad.get(1)).toBe('Overlaps F2')
+  })
+  it('ignores hidden neighbors in gaps', () => {
+    const a = fr(1, 10, 10, 10, 10), b = fr(2, 25, 12, 10, 10, { hidden: true })
+    expect(gapsOf([a, b], a).R).toBeNull()
+  })
+})
+
+describe('hit layering', () => {
+  it('prefers a frame over an obstacle even when the obstacle is later in the list', () => {
+    const frame = fr(1, 0, 0, 10, 10), obs = fr(2, 0, 0, 20, 20, { kind: 'obstacle' })
+    expect(hit([frame, obs], 5, 5)).toBe(frame)
+    expect(hit([frame, obs], 15, 15)).toBe(obs)
+  })
+  it('skips hidden pieces', () => {
+    expect(hit([fr(1, 0, 0, 10, 10, { hidden: true })], 5, 5)).toBeNull()
+  })
+})
+
+describe('snapMove with a group', () => {
+  it('does not snap to excluded members or hidden pieces', () => {
+    const a = fr(1, 50, 0, 10, 10), hidden = fr(2, 30, 0, 10, 10, { hidden: true })
+    const p = plan([a, hidden])
+    const box = { w: 10, h: 10 }
+    expect(snapMove(p, box, 31, 0, false, 3, new Set([a])).x).toBe(31)
+    const r = snapMove(p, box, 38, 0, false, 3, new Set())
+    expect(r.x).not.toBe(40)
+  })
+  it('snaps a box to the wall edge', () => {
+    expect(snapMove(plan([]), { w: 10, h: 10 }, 2, 30, false, 3).x).toBe(0)
+  })
+})
+
+describe('findSpot / arrange / centerGroup with hidden pieces', () => {
+  it('places a new frame where a hidden one sits', () => {
+    const p = plan([fr(1, 2, 2, 50, 50, { hidden: true })])
+    expect(findSpot(p, 10, 10)).toEqual([2, 2])
+  })
+  it('does not move hidden frames when arranging or centering', () => {
+    const p = plan([fr(1, 0, 0, 10, 10), fr(2, 90, 80, 10, 10, { hidden: true })])
+    expect(arrange(p).moves.map(m => m.id)).toEqual([1])
+    expect(centerGroup(p).map(m => m.id)).toEqual([1])
+  })
+  it('reports nothing to arrange when every frame is hidden', () => {
+    expect(arrange(plan([fr(1, 0, 0, 10, 10, { hidden: true })]))).toEqual({ moves: [], overflow: false })
+  })
+})
