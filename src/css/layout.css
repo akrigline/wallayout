@@ -32,6 +32,20 @@ textarea{width:100%;min-height:76px;padding:6px 8px;border:1px solid var(--line)
 .banner{margin:10px 0 0;padding:8px 10px;border:1px solid var(--acc);border-radius:6px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .banner[hidden]{display:none}
 .li{display:flex;width:100%;align-items:center;gap:8px;text-align:left;border:0;border-radius:6px;padding:6px 6px}
+.lr{display:flex;align-items:center;gap:2px}
+.lr .li{flex:1;min-width:0;width:auto}
+.li.hid{opacity:.45}
+.eye{border:0;padding:6px;line-height:0;color:var(--mut);border-radius:6px;flex:none}
+.eye:hover{background:var(--bg);color:var(--ink)}
+.eye[aria-pressed="false"]{opacity:.7}
+.hkrow{display:grid;grid-template-columns:18px 1fr 1fr 30px;gap:6px;align-items:end}
+.hkrow .hkn{font-size:12px;color:var(--mut);padding-bottom:12px;text-align:center}
+.hkrow button{margin-bottom:8px;padding:6px 0}
+.tools{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+.tools button{width:32px;height:30px;padding:0;display:flex;align-items:center;justify-content:center}
+.tools .sep{width:1px;background:var(--line);margin:2px 3px}
+.tools svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.2;fill:currentColor;fill-opacity:.35}
+.tools svg path{fill:none}
 .li:hover{background:var(--bg)}
 .li.sel{background:var(--bg);box-shadow:inset 3px 0 0 var(--acc)}
 .li i{width:10px;height:10px;border-radius:2px;flex:none;background:hsl(var(--hh) 55% 52%)}
