@@ -8,7 +8,7 @@
 #wall.project{background-color:transparent;background-image:none;--lw:calc(var(--u)*3);--fs:calc(var(--u)*14);--gl:rgba(255,255,255,.3)}
 #wall.project.pgrid,#wall.project.cal{background-image:linear-gradient(to right,var(--gl) 0 var(--glw),transparent 0),linear-gradient(to bottom,var(--gl) 0 var(--glw),transparent 0)}
 #wall.project.edge{outline:var(--lw) dashed rgba(255,255,255,.45)}
-.fr{position:absolute;box-sizing:border-box;border:var(--lw) solid;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;font-size:var(--fs);line-height:1.2;padding:calc(var(--u)*3)}
+.fr{position:absolute;box-sizing:border-box;border:var(--lw) solid;display:flex;align-items:center;justify-content:center;text-align:center;font-size:var(--fs);line-height:1.2;padding:calc(var(--u)*3)}
 .fr .lb{pointer-events:none;overflow:hidden;max-height:100%}
 .fr .lb small{display:block;opacity:.85}
 #wall.design .fr{border-color:hsl(var(--hh) 45% var(--bl));background-color:hsl(var(--hh) 50% var(--fl) / .62);color:var(--ink)}
@@ -26,8 +26,12 @@
 #wall.project .fr.bad{border-color:#ff3b30}
 #wall.design .fr.sel{box-shadow:0 0 0 calc(var(--u)*2.5) var(--acc)}
 #wall.project .fr.sel{box-shadow:0 0 0 calc(var(--u)*2.5) #fff}
-#wall.cal .fr{opacity:.3}
-.hk{position:absolute;left:50%;width:calc(var(--u)*20);height:calc(var(--u)*20);margin:calc(var(--u)*-10) 0 0 calc(var(--u)*-10);border:calc(var(--u)*2) solid currentColor;border-radius:50%;pointer-events:none;
+#wall .fr{z-index:1}
+#wall .fr.obs{z-index:0;opacity:.45}
+#wall.project .fr.obs{opacity:.35}
+#wall .fr.obs.sel{opacity:.8}
+#wall.cal .fr,#wall.cal .fr.obs{opacity:.3}
+.hk{position:absolute;width:calc(var(--u)*20);height:calc(var(--u)*20);margin:calc(var(--u)*-10) 0 0 calc(var(--u)*-10);border:calc(var(--u)*2) solid currentColor;border-radius:50%;pointer-events:none;
   background:linear-gradient(currentColor,currentColor) center/100% calc(var(--u)*1.5) no-repeat,linear-gradient(currentColor,currentColor) center/calc(var(--u)*1.5) 100% no-repeat}
 #wall.design .hk{opacity:.55}
 #wall.nohooks .hk{display:none}
@@ -36,10 +40,17 @@
 .area.on{display:block}
 #wall.project .area{border-color:rgba(88,207,194,.7);background:transparent}
 #wall.project:not(.edge) .area{display:none}
-.gd{position:absolute;background:#ff2d9a;pointer-events:none}
+.gd{position:absolute;background:#ff2d9a;pointer-events:none;z-index:5}
+#marq{position:absolute;z-index:7;pointer-events:none;border:var(--lw) dashed var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+#marq[hidden]{display:none}
+#wall.project #marq{border-color:#fff;background:rgba(255,255,255,.12)}
+#mgl{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.mg{position:absolute;box-sizing:border-box;border-radius:calc(var(--u)*3);background:hsl(var(--hh) 55% var(--fl)/.12);border:var(--glw) dotted hsl(var(--hh) 45% var(--bl)/.4)}
+#wall.project .mg{background:rgba(255,255,255,.06);border-color:hsl(var(--hh) 95% 70%/.3)}
+#wall.project.nomargin #mgl{display:none}
 .gd.x{top:-9999px;bottom:-9999px;width:var(--lw);margin-left:calc(var(--lw)/-2)}
 .gd.y{left:-9999px;right:-9999px;height:var(--lw);margin-top:calc(var(--lw)/-2)}
-#calsvg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+#calsvg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:6}
 .dim{position:absolute;font-size:12px;color:var(--mut);pointer-events:none;white-space:nowrap}
 #dimT{transform:translate(-50%,-100%)}
 #dimL{transform:translate(-100%,-50%)}
