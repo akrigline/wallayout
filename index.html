@@ -22,6 +22,7 @@
     </div>
     <div class="hgrp">
       <button data-act="sheet">Hang sheet</button>
+      <button data-act="layouts">Layouts</button>
       <button data-act="share">Share</button>
       <button data-act="project" class="primary">Project on wall</button>
     </div>
@@ -38,8 +39,10 @@
         </div>
         <div class="grid2">
           <label>Gap between frames <input id="sGap" inputmode="decimal" autocomplete="off"></label>
-          <label>Hook below frame top <input id="sHook" inputmode="decimal" autocomplete="off"></label>
+          <label>Default hook below top <input id="sHook" inputmode="decimal" autocomplete="off"></label>
         </div>
+        <label>Visual margin around art <input id="sMargin" inputmode="decimal" autocomplete="off"></label>
+        <p class="note" style="margin-top:-2px">A faint halo around each frame to show breathing room. Halos can overlap. It doesn't block placement. Set 0 to hide.</p>
         <label class="chk"><input type="checkbox" id="sArea"> Limit the gallery to an area of the wall</label>
         <div id="areaFields" hidden>
           <div class="grid2">
@@ -78,12 +81,12 @@
       <section>
         <h2>Frames <span id="cnt" style="color:var(--mut);font-weight:400"></span></h2>
         <div id="list"></div>
-        <div class="btnrow"><button data-act="clearAll" id="bClear">Clear all</button></div>
+        <div class="btnrow"><button data-act="selAll">Select all</button><button data-act="showAll">Show all</button><button data-act="clearAll" id="bClear">Clear all</button></div>
       </section>
     </aside>
 
     <div id="stage">
-      <div id="wall" class="design"><div id="areaBox" class="area"></div><svg id="calsvg"></svg></div>
+      <div id="wall" class="design"><div id="mgl"></div><div id="areaBox" class="area"></div><div id="marq" hidden></div><svg id="calsvg"></svg></div>
       <div class="dim" id="dimT"></div>
       <div class="dim" id="dimL"></div>
       <div id="hud" hidden></div>
@@ -94,12 +97,14 @@
       <div id="ptool" class="ui" hidden>
         <div class="row">
           <button data-act="calToggle" id="pCal">Calibrate</button>
+          <button data-act="pieces" id="pPieces">Show / hide</button>
           <div class="seg" id="pStyle">
             <button data-act="style" data-v="outline">Outline</button>
             <button data-act="style" data-v="wash">Wash</button>
             <button data-act="style" data-v="solid">Solid</button>
           </div>
           <button data-act="tog" data-t="labels">Labels</button>
+          <button data-act="tog" data-t="margin">Margins</button>
           <button data-act="tog" data-t="hooks">Hooks</button>
           <button data-act="tog" data-t="grid">Grid</button>
           <button data-act="tog" data-t="edge">Wall edge</button>
@@ -110,6 +115,7 @@
           <button data-act="hideUI" title="Hide controls (H). Double-click empty space to bring them back.">Hide controls</button>
           <button data-act="exit">Exit</button>
         </div>
+        <div class="calp" id="piecesPanel" hidden></div>
         <div class="calp" id="calPanel" hidden>
           <p>Drag the four yellow dots onto your wall's corners: 1 top-left, 2 top-right, 3 bottom-right, 4 bottom-left. Click a dot, then use arrow keys to nudge (Shift = 10 px).</p>
           <p>The cyan box is the area being mapped. Grid lines are 12″ (or 25 cm) apart, so hold a tape measure against them to check your scale.</p>
@@ -151,6 +157,19 @@
       <label>Load a plan someone sent you <textarea id="codeIn" rows="4" placeholder="Paste a code starting with GWP1:"></textarea></label>
       <div class="btnrow"><button data-act="importCode">Load plan</button></div>
       <p class="note">Loading replaces the current wall and frames. You can undo it afterward.</p>
+    </div>
+  </div>
+</div>
+<div id="layouts" class="modal" hidden>
+  <div class="mbox">
+    <div class="mh"><h2>Saved layouts</h2><button data-act="closeLayouts">Close</button></div>
+    <div id="layoutsBody">
+      <div class="lsave">
+        <label>Name <input id="layoutName" placeholder="Optional, e.g. Salon wall" autocomplete="off"></label>
+        <button class="primary" data-act="saveLayout">Save current layout</button>
+      </div>
+      <p id="layoutsLock" class="note" hidden>The layout is locked. Unlock it to load or update a saved layout.</p>
+      <div id="layoutList"></div>
     </div>
   </div>
 </div>

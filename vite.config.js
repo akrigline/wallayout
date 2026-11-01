@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 
-// Served from https://akrigline.github.io/wallayout/ on GitHub Pages, so assets
-// must resolve under the /wallayout/ subpath.
+// Served from the root of https://wallayout.akrigline.com/ (GitHub Pages custom
+// domain, see public/CNAME), so assets resolve from '/'.
 export default defineConfig({
-  base: '/wallayout/',
+  base: '/',
 })
