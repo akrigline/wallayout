@@ -11,9 +11,9 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "happy-dom": "^21.0.1",
+    "happy-dom": "^21.0.4",
     "husky": "^9.1.7",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }
