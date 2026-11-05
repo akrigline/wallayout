@@ -108,3 +108,18 @@ describe('margin, hooks and hidden', () => {
     expect(b.hidden).toBe(true)
   })
 })
+
+describe('pictures stay on the device', () => {
+  const json = code => JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))))
+  const d3 = { gap: 2, hook: 2, margin: 3 }
+  it('encodes a frame with a picture without its key', () => {
+    const code = encodeSpec(mk([fr(1, { img: 'secretkey123' })]))
+    expect(json(code).frames[0]).not.toHaveProperty('img')
+    expect(atob(code.slice(5))).not.toContain('secretkey123')
+  })
+  it('decodes frames without a picture even if a code carries one', () => {
+    const code = enc({ v: 1, wall: { w: 100, h: 80 }, frames: [{ name: 'A', w: 10, h: 10, x: 0, y: 0, img: 'abc' }] })
+    expect(decodeSpec(code, d3).frames[0]).not.toHaveProperty('img')
+    expect(decodeSpec(encodeSpec(mk([fr(1, { img: 'k' })])), d3).frames[0]).not.toHaveProperty('img')
+  })
+})

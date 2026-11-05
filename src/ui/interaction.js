@@ -6,8 +6,20 @@ import { addFrame, applyMoves, arrange, centerGroup, redo, sel, setUnit, undo } 
 import { copyText, decodeSpec, openLayouts, openShare, openSheet, renderLayouts, sheetText } from './modals.js';
 import * as L from '../js/layout.js';
 import { addedHook, scaleHooks, twoHooks } from '../js/hooks.js';
+import { chooseImage, storePicture } from './pictures.js';
 import { alignMoves, centerMoves, distributeMoves } from '../js/selection.js';
 
+// Pick an image for the selected frame. Opens the chooser synchronously (it needs the click), then re-checks
+// everything, since the lock, selection or frame can change while the chooser is open.
+async function setPicture(id){
+  const file=await chooseImage(); if (!file) return;
+  let key;
+  try { key=await storePicture(file); } catch(err){ toast('That file couldn\'t be read as an image.'); return; }
+  const f=S.frames.find(g=>g.id===id);
+  if (!f||f.kind==='obstacle') return;
+  if (locked()) return;
+  f.img=key; checkpoint(); renderAll();
+}
 const refreshSel = () => { renderFrames(); renderList(); renderProps(); };
 const visibleFrameIds = () => S.frames.filter(f=>f.kind!=='obstacle'&&!f.hidden).map(f=>f.id);
 function hookHit(x,y){
@@ -118,6 +130,8 @@ export function initInteraction(){
       case 'hktwo': { if (locked()) break; const f=sel(); if (!f) break; f.hooks=twoHooks(f,S.hook); checkpoint(); renderAll(); break; }
       case 'hkreset': { if (locked()) break; const f=sel(); if (!f) break; delete f.hooks; checkpoint(); renderAll(); break; }
       case 'hkdel': { if (locked()) break; const f=sel(); if (!f) break; ensureHooks(f); if (f.hooks.length>1){ f.hooks.splice(+b.dataset.i,1); checkpoint(); renderAll(); } break; }
+      case 'addPic': case 'replacePic': { if (locked()) break; const f=sel(); if (!f||f.kind==='obstacle') break; setPicture(f.id); break; }
+      case 'rmPic': { if (locked()) break; const f=sel(); if (!f||!f.img) break; delete f.img; checkpoint(); renderAll(); break; }
       case 'vis': {
         const f=S.frames.find(g=>g.id===+b.dataset.id); if (!f) break;
         if (f.hidden) delete f.hidden; else { f.hidden=true; dropFromSel(f.id); }
@@ -145,7 +159,7 @@ export function initInteraction(){
         else { b._arm=true; b.textContent='Tap again to clear all'; setTimeout(()=>{ b._arm=false; b.textContent='Clear all'; },3000); }
         break;
       case 'rotate': { if (locked()) break; const f=sel(); if(!f) break; const cx=f.x+f.w/2, cy=f.y+f.h/2; [f.w,f.h]=[f.h,f.w]; delete f.hooks; f.x=r16(cx-f.w/2); f.y=r16(cy-f.h/2); checkpoint(); renderAll(); break; }
-      case 'dup': { if (locked()) break; const f=sel(); if(!f) break; const n=addFrame({name:f.name,w:f.w,h:f.h,kind:f.kind,hooks:f.hooks}); break; }
+      case 'dup': { if (locked()) break; const f=sel(); if(!f) break; const n=addFrame({name:f.name,w:f.w,h:f.h,kind:f.kind,hooks:f.hooks,img:f.img}); break; }
       case 'cH': { if (locked()) break; const f=sel(); if(!f) break; const Ar=area(); f.x=r16(Ar.x+(Ar.w-f.w)/2); checkpoint(); renderAll(); break; }
       case 'cV': { if (locked()) break; const f=sel(); if(!f) break; const Ar=area(); f.y=r16(Ar.y+(Ar.h-f.h)/2); checkpoint(); renderAll(); break; }
       case 'del': { if (locked()) break; const i=S.frames.findIndex(f=>f.id===S.sel); if (i<0) break; S.frames.splice(i,1); S.sel=null; checkpoint(); renderAll(); break; }

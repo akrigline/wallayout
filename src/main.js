@@ -3,12 +3,13 @@ import './css/layout.css';
 import './css/wall.css';
 import './css/projection.css';
 import './css/responsive.css';
-import { S, store } from './ui/ctx.js';
+import { S, layouts, store } from './ui/ctx.js';
 import { addFrame, arrange } from './ui/actions.js';
 import { initRender, renderAll } from './ui/render.js';
 import { initProjection } from './ui/projection.js';
 import { initModals } from './ui/modals.js';
 import { initInteraction } from './ui/interaction.js';
+import { collectOrphans } from './ui/pictures.js';
 
 initRender();
 initProjection();
@@ -25,3 +26,5 @@ S.sel = S.frames.some(f=>f.id===S.sel) ? S.sel : null;
 store.resetHistory();
 renderAll();
 if (store.fresh) store.save();
+// History is empty here, so the working plan and saved layouts are the only things that can still want a picture.
+collectOrphans(S.frames, layouts.snaps());

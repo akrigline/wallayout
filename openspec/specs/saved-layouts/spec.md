@@ -30,11 +30,15 @@ Saved layouts SHALL be stored in their own browser storage key and SHALL survive
 - **THEN** the list is empty and the current plan loads normally
 
 ### Requirement: What a saved layout contains
-A saved layout SHALL contain the wall size, gallery area, frames and next id only. It SHALL NOT contain calibration, projector settings, lock state, selection or unit.
+A saved layout SHALL contain the wall size, gallery area, frames and next id only. Each frame SHALL keep its picture key, so loading the layout on the same device shows the pictures again; picture data itself is not copied into the layout. It SHALL NOT contain calibration, projector settings, lock state, selection or unit.
 
 #### Scenario: Load keeps device settings
 - **WHEN** a saved layout is loaded after the calibration and unit were changed
 - **THEN** the calibration and unit are unchanged
+
+#### Scenario: Pictures come back
+- **WHEN** a layout is saved with a picture on a frame, the frame's picture is removed, and the layout is loaded
+- **THEN** the frame shows the picture again
 
 ### Requirement: List saved layouts
 The system SHALL list saved layouts newest first. Each entry SHALL show a thumbnail of the layout, its name, when it was saved, and a summary of its frame count and wall size in the current unit. When none exist the system SHALL show a short note explaining saved layouts.
@@ -100,3 +104,4 @@ The system SHALL provide a "Layouts" button in the header that opens the saved-l
 #### Scenario: Open and close
 - **WHEN** the user clicks Layouts and then Close
 - **THEN** the panel opens and then hides
+

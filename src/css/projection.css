@@ -17,3 +17,4 @@
 .calp[hidden]{display:none}
 .calp p{margin:0 0 6px;color:#c8d6d3;font-size:12px}
 #calRef[hidden]{display:none}
+#wall.project.mono .fr.pic::before{filter:grayscale(1)}

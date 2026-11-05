@@ -157,3 +157,22 @@ describe('margin settings', () => {
     expect(s.state.frames[0]).toMatchObject({ hooks: [{ x: 1, y: 1 }], hidden: true })
   })
 })
+
+describe('pictures', () => {
+  it('keeps a frame\'s img key through undo and redo', () => {
+    const s = createStore({ storage: null })
+    s.state.frames = [{ id: 1, name: 'A', x: 0, y: 0, w: 5, h: 5, hue: 1, kind: 'frame' }]; s.state.nextId = 2; s.resetHistory()
+    s.state.frames[0].img = 'k1'; s.checkpoint()
+    s.undo(); expect(s.state.frames[0].img).toBeUndefined()
+    s.redo(); expect(s.state.frames[0].img).toBe('k1')
+  })
+  it('proj.pics defaults to true and merges over older saves', () => {
+    expect(createStore({ storage: null }).state.proj.pics).toBe(true)
+    const store = v => ({ getItem: () => JSON.stringify(v), setItem() {} })
+    expect(createStore({ storage: store({ proj: { style: 'wash' } }) }).state.proj).toMatchObject({ style: 'wash', pics: true })
+    expect(createStore({ storage: store({ proj: { pics: false } }) }).state.proj.pics).toBe(false)
+  })
+  it('does not put pics in undo snapshots', () => {
+    expect(createStore({ storage: null }).snapshot()).not.toHaveProperty('pics')
+  })
+})

@@ -34,6 +34,16 @@ export function createLayouts({ storage = defaultStorage(), key = LAYOUTS_KEY, n
   }
 
   return {
+    // Raw snapshots of every saved layout, for reference counting. Unlike list() this is null, not [], when the
+    // data is unreadable, so a caller can tell "no layouts" from "could not look".
+    snaps() {
+      try {
+        const raw = storage && storage.getItem(key);
+        if (raw == null || raw === '') return storage ? [] : null;
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr.map(e => e && e.snap) : null;
+      } catch (e) { return null; }
+    },
     list: () => read().reverse().map(clone),
     get(id) { const e = read().find(x => x.id === id); return e ? clone(e) : null; },
     // Each mutator returns the entry (or true for remove) on success and false on a missing id or failed write.

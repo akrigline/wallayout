@@ -6,7 +6,7 @@ export const defaults = () => ({
   unit: 'in', wall: { w: 120, h: 96 }, area: null, margin: 3, gap: 2, grid: 0, hook: 2, hooks: true, snap: true,
   frames: [], sel: null, locked: false, nextId: 1,
   cal: { set: false, corners: [[.12, .12], [.88, .12], [.88, .88], [.12, .88]], custom: false, ref: { x: 0, y: 0, w: 48, h: 36 } },
-  proj: { style: 'outline', margin: true, labels: true, grid: false, edge: true, mono: false },
+  proj: { style: 'outline', margin: true, labels: true, grid: false, edge: true, mono: false, pics: true },
 });
 
 // Merge saved state over fresh defaults, including nested cal and proj.

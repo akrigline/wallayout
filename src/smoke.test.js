@@ -6,8 +6,17 @@ let errors
 const docListeners = []
 const realAdd = document.addEventListener.bind(document)
 document.addEventListener = (type, fn, opts) => { docListeners.push([type, fn, opts]); realAdd(type, fn, opts) }
+// Likewise drop the previous boot's pending timers and animation frames (the 450 ms debounced save, the render
+// after entering projection mode). The old app still reaches the shared DOM and localStorage through document
+// lookups, so a late one would overwrite the next test's page.
+const timers = [], frames_ = []
+const realSetTimeout = globalThis.setTimeout, realRaf = globalThis.requestAnimationFrame
+globalThis.setTimeout = (fn, ms, ...a) => { const id = realSetTimeout(fn, ms, ...a); timers.push(id); return id }
+globalThis.requestAnimationFrame = fn => { const id = realRaf(fn); frames_.push(id); return id }
 async function boot(saved) {
   for (const [type, fn, opts] of docListeners.splice(0)) document.removeEventListener(type, fn, opts)
+  for (const id of timers.splice(0)) clearTimeout(id)
+  for (const id of frames_.splice(0)) cancelAnimationFrame(id)
   vi.resetModules()
   localStorage.clear()
   if (saved) localStorage.setItem('galleryWallPlanner.v1', JSON.stringify(saved))
@@ -423,5 +432,149 @@ describe('multiple hooks', () => {
     const o = document.querySelector('#props [data-k="kind"]'); o.checked = true; o.dispatchEvent(new Event('change', { bubbles: true }))
     expect(document.querySelectorAll('.fr .hk')).toHaveLength(0)
     expect(hkInputs()).toHaveLength(0)
+  })
+})
+
+describe('frame pictures', () => {
+  const fs = () => [
+    { id: 1, name: 'A', w: 8, h: 10, x: 10, y: 10, hue: 0, kind: 'frame' },
+    { id: 2, name: 'Door', w: 8, h: 10, x: 40, y: 10, hue: 0, kind: 'obstacle' },
+  ]
+  const btn = a => document.querySelector(`#props [data-act="${a}"]`)
+  const flush = () => new Promise(r => setTimeout(r, 0))
+  const picKey = () => { const s = saved(); if (!s.frames[0]) throw new Error('no frame: ' + JSON.stringify(s).slice(0, 300)); return s.frames[0].img }
+  const canvases = []
+  // happy-dom has no image decoding or canvas, so stand in for them and record what would be drawn
+  function stubImaging(w = 4000, h = 3000) {
+    globalThis.createImageBitmap = async () => ({ width: w, height: h, close() {} })
+    HTMLCanvasElement.prototype.getContext = function () { canvases.push(this); return { fillRect() {}, drawImage() {} } }
+    HTMLCanvasElement.prototype.toBlob = function (cb) { cb(new Blob(['jpg'], { type: 'image/jpeg' })) }
+    URL.createObjectURL = () => 'blob:test/' + Math.random().toString(36).slice(2)
+    URL.revokeObjectURL = () => {}
+  }
+  const chooseFile = file => {
+    const orig = HTMLInputElement.prototype.click
+    HTMLInputElement.prototype.click = function () {
+      if (this.type !== 'file') return orig.call(this)
+      Object.defineProperty(this, 'files', { value: file ? [file] : [] })
+      queueMicrotask(() => this.dispatchEvent(new Event('change')))
+    }
+    return () => { HTMLInputElement.prototype.click = orig }
+  }
+
+  it('offers Add picture on frames only, not obstacles', async () => {
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelectorAll('#list .li')[0].click()
+    expect(btn('addPic')).not.toBeNull()
+    expect(btn('rmPic')).toBeNull()
+    document.querySelectorAll('#list .li')[1].click()
+    expect(btn('addPic')).toBeNull()
+  })
+
+  it('adds a downscaled picture, then replaces, removes and undoes', async () => {
+    stubImaging()
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelector('#list .li').click()
+    const done = chooseFile(new File(['x'], 'p.png', { type: 'image/png' }))
+    try {
+      click('#props [data-act="addPic"]')
+      await vi.waitFor(() => expect(picKey()).toBeDefined())
+      expect(canvases.at(-1).width).toBe(1000); expect(canvases.at(-1).height).toBe(750)
+      const key = picKey()
+      expect(key).toMatch(/^[a-z0-9]+$/)
+      expect(document.querySelector('.fr').classList.contains('pic')).toBe(true)
+      expect(document.querySelector('.fr').style.getPropertyValue('--pic')).toMatch(/^url\("blob:/)
+      expect(btn('addPic')).toBeNull(); expect(btn('replacePic')).not.toBeNull()
+
+      click('#props [data-act="replacePic"]')
+      await vi.waitFor(() => expect(picKey()).not.toBe(key))
+
+      click('#props [data-act="rmPic"]')
+      expect(saved().frames[0].img).toBeUndefined()
+      expect(document.querySelector('.fr').classList.contains('pic')).toBe(false)
+      expect(btn('addPic')).not.toBeNull()
+      click('#bUndo')
+      expect(document.querySelector('.fr').classList.contains('pic')).toBe(true)
+      expect(saved().frames[0].img).toBeDefined()
+    } finally { done() }
+    expect(errors).toEqual([])
+  })
+
+  it('does not enlarge a small image', async () => {
+    stubImaging(300, 200)
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelector('#list .li').click()
+    const done = chooseFile(new File(['x'], 'p.png', { type: 'image/png' }))
+    try { click('#props [data-act="addPic"]'); await vi.waitFor(() => expect(picKey()).toBeDefined()) } finally { done() }
+    expect([canvases.at(-1).width, canvases.at(-1).height]).toEqual([300, 200])
+  })
+
+  it('toasts and leaves the frame alone for a file that is not an image', async () => {
+    stubImaging()
+    globalThis.createImageBitmap = async () => { throw new Error('bad image') }
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelector('#list .li').click()
+    const done = chooseFile(new File(['x'], 'p.txt', { type: '' }))
+    try { click('#props [data-act="addPic"]'); await vi.waitFor(() => expect(toastText()).toMatch(/couldn't be read as an image/)) } finally { done() }
+    expect(toastText()).toMatch(/couldn't be read as an image/)
+    expect(saved().frames[0].img).toBeUndefined()
+  })
+
+  it('refuses to add or remove while locked', async () => {
+    stubImaging()
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelector('#list .li').click()
+    const done = chooseFile(new File(['x'], 'p.png', { type: 'image/png' }))
+    try { click('#props [data-act="addPic"]'); await vi.waitFor(() => expect(picKey()).toBeDefined()) } finally { done() }
+    const key = picKey()
+    click('header [data-act="sheet"]'); click('#bCommit'); click('[data-act="closeSheet"]')
+    expect(saved().locked).toBe(true)
+    click('#props [data-act="rmPic"]')
+    expect(toastText()).toMatch(/locked/i)
+    expect(picKey()).toBe(key)
+    document.querySelector('#toast').textContent = ''
+    click('#props [data-act="replacePic"]')
+    expect(toastText()).toMatch(/locked/i)
+    expect(picKey()).toBe(key)
+  })
+
+  it('shows a normal frame and offers Add when the stored picture is missing', async () => {
+    await boot({ frames: [{ ...fs()[0], img: 'gone' }], nextId: 2 })
+    await flush(); await flush()
+    document.querySelector('#list .li').click()
+    expect(document.querySelector('.fr').classList.contains('pic')).toBe(false)
+    expect(btn('addPic')).not.toBeNull()
+  })
+
+  it('duplicate keeps the picture key', async () => {
+    await boot({ frames: [{ ...fs()[0], img: 'k' }], nextId: 2 })
+    document.querySelector('#list .li').click()
+    click('#props [data-act="dup"]')
+    expect(saved().frames.map(f => f.img)).toEqual(['k', 'k'])
+  })
+
+  it('keeps pictures out of share codes', async () => {
+    await boot({ frames: [{ ...fs()[0], img: 'secretkey' }], nextId: 2 })
+    click('header [data-act="share"]')
+    expect(atob(document.querySelector('#codeOut').value.slice(5))).not.toContain('secretkey')
+  })
+
+  it('has a Pictures toggle in projection that persists and only affects projection', async () => {
+    stubImaging()
+    await boot({ frames: fs(), nextId: 3 })
+    document.querySelector('#list .li').click()
+    const done = chooseFile(new File(['x'], 'p.png', { type: 'image/png' }))
+    try { click('#props [data-act="addPic"]'); await vi.waitFor(() => expect(picKey()).toBeDefined()) } finally { done() }
+    const pic = () => document.querySelector('.fr').classList.contains('pic')
+    expect(saved().proj.pics).toBe(true)
+    click('header [data-act="project"]'); click('[data-act="calDone"]')
+    expect(pic()).toBe(true)
+    click('#ptool [data-t="pics"]')
+    expect(saved().proj.pics).toBe(false)
+    expect(pic()).toBe(false)
+    click('#ptool [data-t="pics"]'); expect(pic()).toBe(true)
+    click('#ptool [data-t="pics"]'); click('[data-act="exit"]')
+    expect(pic()).toBe(true)
+    expect(errors).toEqual([])
   })
 })

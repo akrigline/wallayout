@@ -1,5 +1,6 @@
 import { $, K, S, T, V, boundsOf, calsvg, els, esc, fmt, handles, hooksOf, hud, num, ptool, selFrames, stage, store, syncSel, unitWord, wall } from './ctx.js';
 import { refRect } from './projection.js';
+import { pictureUrl } from './pictures.js';
 import * as L from '../js/layout.js';
 import { homography, inv3, mapPt } from '../js/homography.js';
 
@@ -86,6 +87,7 @@ export function renderFrames(){
   syncSel(); computeBad(); renumber();
   for (const [id,el] of els) if (!S.frames.some(f=>f.id===id)){ el.remove(); els.delete(id); }
   const hideSel = T.mode==='project' && (T.uiHidden || T.calibrating);
+  const showPics = T.mode!=='project' || (S.proj.pics && !T.calibrating);
   for (const f of S.frames){
     let el=els.get(f.id);
     if (!el){ el=document.createElement('div'); el.className='fr'; el.innerHTML='<div class="lb"></div>'; wall.insertBefore(el,calsvg); els.set(f.id,el); }
@@ -98,6 +100,9 @@ export function renderFrames(){
     el.classList.toggle('sel',T.sels.has(f.id)&&!hideSel);
     el.classList.toggle('bad',T.bad.has(f.id));
     el.classList.toggle('obs',f.kind==='obstacle');
+    const pic=f.img&&f.kind!=='obstacle'&&showPics?pictureUrl(f.img):null;
+    el.classList.toggle('pic',!!pic);
+    if (pic) el.style.setProperty('--pic',`url("${pic}")`); else el.style.removeProperty('--pic');
     const n=T.num.get(f.id);
     const html=`${n?'<b>'+n+'</b> ':''}${esc(f.name)}<small>${num(f.w)} × ${num(f.h)}</small>`;
     const lb=el.firstChild; if (lb._h!==html){ lb.innerHTML=html; lb._h=html; }
@@ -162,6 +167,11 @@ function hookPanel(f){
       <button data-act="hkdel" data-i="${i}" ${hs.length<2?'disabled':''} title="Remove hook ${i+1}" aria-label="Remove hook ${i+1}">✕</button></div>`).join('')+
     `<div class="btnrow"><button data-act="hkadd" ${hs.length>=6?'disabled':''}>Add hook</button><button data-act="hktwo">Two hooks</button><button data-act="hkreset" ${custom?'':'disabled'}>Reset to default</button></div>`;
 }
+function picturePanel(f){
+  const has=!!(f.img&&pictureUrl(f.img));
+  return `<h2 style="font-size:13px;margin:6px 0 4px">Picture</h2>
+    <div class="btnrow">${has?'<button data-act="replacePic">Replace picture</button><button data-act="rmPic">Remove picture</button>':'<button data-act="addPic">Add picture</button>'}</div>`;
+}
 export function renderProps(){
   syncSel();
   const P=$('#props'), f=S.frames.find(x=>x.id===S.sel);
@@ -190,7 +200,7 @@ export function renderProps(){
       <label>From ceiling (${u}) <input data-k="y" inputmode="decimal" value="${num(f.y)}"></label>
     </div>
     <label class="chk"><input type="checkbox" data-k="kind" ${f.kind==='obstacle'?'checked':''}> Obstacle, not a frame</label>
-    ${f.kind==='obstacle'?'':hookPanel(f)}
+    ${f.kind==='obstacle'?'':hookPanel(f)+picturePanel(f)}
     <div class="btnrow">
       <button data-act="vis" data-id="${f.id}">${f.hidden?'Show':'Hide'}</button><button data-act="rotate">Rotate 90°</button><button data-act="dup">Duplicate</button>
       <button data-act="cH">Center left–right</button><button data-act="cV">Center up–down</button>

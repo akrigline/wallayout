@@ -56,3 +56,9 @@
 #dimL{transform:translate(-100%,-50%)}
 #hud{position:absolute;left:10px;bottom:10px;padding:5px 9px;border-radius:6px;background:var(--panel);border:1px solid var(--line);font-size:12px;pointer-events:none;max-width:calc(100% - 20px)}
 #stage.projecting #hud{left:50%;transform:translateX(-50%);background:rgba(10,14,16,.85);color:#e8f0ee;border-color:#3a4a50}
+/* frame pictures: drawn on ::before so the frame's own background (tint, stripes) stays underneath */
+.fr.pic::before{content:'';position:absolute;inset:0;background:var(--pic) center/cover no-repeat;pointer-events:none}
+.fr.pic .lb{position:relative;color:#fff;text-shadow:0 0 calc(var(--u)*3) #000,0 0 calc(var(--u)*1.5) #000}
+/* a conflict has to stay visible over the picture, so its stripes move to ::after, above it */
+#wall .fr.pic.bad{background-image:none}
+#wall .fr.pic.bad::after{content:'';position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(45deg,var(--bad) 0 calc(var(--u)*1.5),transparent 0 calc(var(--u)*9))}

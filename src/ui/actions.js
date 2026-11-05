@@ -8,7 +8,7 @@ export const redo = () => store.redo();
 export const findSpot = (w,h) => L.findSpot(S,w,h);
 export function addFrame(o,quiet){
   const id=S.nextId++, [x,y]=findSpot(o.w,o.h);
-  const f={id,name:o.name||(o.kind==='obstacle'?'Obstacle':'Frame '+id),w:o.w,h:o.h,x,y,hue:Math.round((id*137.5)%360),kind:o.kind||'frame',hooks:o.hooks?o.hooks.map(h=>({x:h.x,y:h.y})):undefined};
+  const f={id,name:o.name||(o.kind==='obstacle'?'Obstacle':'Frame '+id),w:o.w,h:o.h,x,y,hue:Math.round((id*137.5)%360),kind:o.kind||'frame',hooks:o.hooks?o.hooks.map(h=>({x:h.x,y:h.y})):undefined,img:o.img};
   S.frames.push(f); setSelection([id]);
   if (!quiet){ checkpoint(); renderAll(); }
   return f;

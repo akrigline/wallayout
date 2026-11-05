@@ -126,3 +126,34 @@ describe('thumbnailSvg', () => {
     expect(thumbnailSvg(snap({ frames: [frame(1, { name: '<script>x</script>' })] }))).not.toContain('script')
   })
 })
+
+describe('pictures', () => {
+  it('keeps each frame\'s picture key through save and get', () => {
+    const { L } = mk()
+    const e = L.save('A', snap({ frames: [frame(1, { img: 'k1' }), frame(2)] }))
+    expect(L.get(e.id).snap.frames[0].img).toBe('k1')
+    expect(L.get(e.id).snap.frames[1].img).toBeUndefined()
+  })
+})
+
+describe('snaps', () => {
+  it('returns every saved snapshot, or [] when there are none', () => {
+    const { L, storage } = mk()
+    expect(L.snaps()).toEqual([])
+    L.save('A', snap({ frames: [frame(1, { img: 'k1' })] })); L.save('B', snap())
+    expect(L.snaps().map(s => s.frames.length)).toEqual([1, 2])
+    expect(storage.m[LAYOUTS_KEY]).toBeDefined()
+  })
+  it('returns null when the data is unreadable or storage is missing', () => {
+    expect(mk(memStorage({ [LAYOUTS_KEY]: '{not json' })).L.snaps()).toBeNull()
+    expect(mk(memStorage({ [LAYOUTS_KEY]: '{"a":1}' })).L.snaps()).toBeNull()
+    const throwing = { getItem() { throw new Error('denied') }, setItem() {} }
+    expect(createLayouts({ storage: throwing }).snaps()).toBeNull()
+    expect(createLayouts({ storage: null }).snaps()).toBeNull()
+  })
+  it('keeps entries that list() would drop, so their pictures are not collected', () => {
+    const { L } = mk(memStorage({ [LAYOUTS_KEY]: JSON.stringify([{ id: 'x', snap: { frames: [{ img: 'k' }] } }]) }))
+    expect(L.list()).toEqual([])
+    expect(L.snaps()[0].frames[0].img).toBe('k')
+  })
+})
