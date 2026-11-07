@@ -157,6 +157,20 @@ const ICONS={
   distv:'<path d="M1.5 2h13M1.5 14h13"/><rect x="4" y="6.25" width="8" height="3.5"/>'
 };
 const alignBtn=(act,v,label,off)=>`<button data-act="${act}" data-v="${v}" title="${label}" aria-label="${label}"${off?' disabled':''}><svg viewBox="0 0 16 16" aria-hidden="true">${ICONS[v]}</svg></button>`;
+const alignTools=(n)=>`<div class="tools" role="group" aria-label="Align and distribute">
+  ${alignBtn('align','left','Align left edges',n<2)}${alignBtn('align','hcenter','Align horizontal centers',n<2)}${alignBtn('align','right','Align right edges',n<2)}<span class="sep"></span>
+  ${alignBtn('align','top','Align top edges',n<2)}${alignBtn('align','vcenter','Align vertical centers',n<2)}${alignBtn('align','bottom','Align bottom edges',n<2)}<span class="sep"></span>
+  ${alignBtn('dist','disth','Distribute evenly, left to right',n<3)}${alignBtn('dist','distv','Distribute evenly, top to bottom',n<3)}
+</div>`;
+// The projection toolbar's copy of the align tools, since the sidebar is not on screen there.
+export function renderAlignPanel(){
+  const p=$('#alignPanel'); if (!p) return;
+  p.hidden=!T.alignOpen; $('#pAlign').classList.toggle('on',!!T.alignOpen);
+  if (!T.alignOpen) return;
+  const n=T.sels.size;
+  p.innerHTML=`<p>${n>1?`${n} selected.`:'Shift-click two or more pieces on the wall to select them.'} Align uses the selection's outer edges. Distribute needs 3 or more.</p>`+alignTools(n)+
+    `<div class="row"><button data-act="centerSel"${n?'':' disabled'}>Center in gallery area</button><button data-act="centerGroup">Center group</button><button data-act="selNone"${n?'':' disabled'}>Select none</button></div>`;
+}
 function hookPanel(f){
   const hs=hooksOf(f), u=unitWord(), custom=!!(f.hooks&&f.hooks.length);
   return `<h2 style="font-size:13px;margin:6px 0 4px">Hooks ${custom?'':'<span style="color:var(--mut);font-weight:400">(default)</span>'}</h2>
@@ -173,7 +187,7 @@ function picturePanel(f){
     <div class="btnrow">${has?'<button data-act="replacePic">Replace picture</button><button data-act="rmPic">Remove picture</button>':'<button data-act="addPic">Add picture</button>'}</div>`;
 }
 export function renderProps(){
-  syncSel();
+  syncSel(); renderAlignPanel();
   const P=$('#props'), f=S.frames.find(x=>x.id===S.sel);
   if (!f){ P.hidden=true; P.innerHTML=''; return; }
   P.hidden=false;
@@ -223,6 +237,8 @@ export function renderControls(){
   $('#pLock').classList.toggle('on',S.locked); $('#pLock').textContent=S.locked?'Locked':'Lock';
   $('#pCal').classList.toggle('on',T.calibrating);
   $('#calPanel').hidden=!T.calibrating;
+  $('#viewPanel').hidden=!T.viewOpen; $('#pView').classList.toggle('on',!!T.viewOpen);
+  renderAlignPanel();
   $('#piecesPanel').hidden=!T.piecesOpen; $('#pPieces').classList.toggle('on',!!T.piecesOpen);
   if (T.piecesOpen){
     const pp=$('#piecesPanel');

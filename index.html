@@ -103,20 +103,28 @@
             <button data-act="style" data-v="wash">Wash</button>
             <button data-act="style" data-v="solid">Solid</button>
           </div>
-          <button data-act="tog" data-t="labels">Labels</button>
-          <button data-act="tog" data-t="margin">Margins</button>
-          <button data-act="tog" data-t="hooks">Hooks</button>
-          <button data-act="tog" data-t="grid">Grid</button>
-          <button data-act="tog" data-t="edge">Wall edge</button>
-          <button data-act="tog" data-t="pics" title="Show or hide the pictures on frames">Pictures</button>
-          <button data-act="tog" data-t="mono">White</button>
+          <button data-act="viewMenu" id="pView" title="Labels, margins, hooks, grid, wall edge, pictures, white">View</button>
+          <button data-act="alignMenu" id="pAlign" title="Align and distribute the selected pieces">Align</button>
           <button data-act="toggleLock" id="pLock">Lock</button>
+          <button data-act="layouts">Layouts</button>
           <button data-act="sheet">Hang sheet</button>
           <button data-act="fullscreen">Fullscreen</button>
           <button data-act="hideUI" title="Hide controls (H). Double-click empty space to bring them back.">Hide controls</button>
           <button data-act="exit">Exit</button>
         </div>
         <div class="calp" id="piecesPanel" hidden></div>
+        <div class="calp" id="viewPanel" hidden>
+          <div class="row">
+            <button data-act="tog" data-t="labels">Labels</button>
+            <button data-act="tog" data-t="margin">Margins</button>
+            <button data-act="tog" data-t="hooks">Hooks</button>
+            <button data-act="tog" data-t="grid">Grid</button>
+            <button data-act="tog" data-t="edge">Wall edge</button>
+            <button data-act="tog" data-t="pics" title="Show or hide the pictures on frames">Pictures</button>
+            <button data-act="tog" data-t="mono">White</button>
+          </div>
+        </div>
+        <div class="calp" id="alignPanel" hidden></div>
         <div class="calp" id="calPanel" hidden>
           <p>Drag the four yellow dots onto your wall's corners: 1 top-left, 2 top-right, 3 bottom-right, 4 bottom-left. Click a dot, then use arrow keys to nudge (Shift = 10 px).</p>
           <p>The cyan box is the area being mapped. Grid lines are 12″ (or 25 cm) apart, so hold a tape measure against them to check your scale.</p>

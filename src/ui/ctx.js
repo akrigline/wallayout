@@ -14,7 +14,7 @@ export const store = createStore();
 export const S = store.state;
 export const layouts = createLayouts();
 export const fresh = store.fresh;
-export const T = { mode:'design', calibrating:false, uiHidden:false, drag:null, guides:[], num:new Map(), bad:new Map(), hsel:null, hdrag:null, u:1, cpTimer:null, sels:new Set(), marq:null, hkdrag:null, piecesOpen:false };
+export const T = { mode:'design', calibrating:false, uiHidden:false, drag:null, guides:[], num:new Map(), bad:new Map(), hsel:null, hdrag:null, u:1, cpTimer:null, sels:new Set(), marq:null, hkdrag:null, piecesOpen:false, viewOpen:false, alignOpen:false };
 export const save = () => store.save();
 export const num = v => numU(v, S.unit);
 export const fmt = v => fmtU(v, S.unit);

@@ -139,6 +139,8 @@ export function initInteraction(){
       }
       case 'showAll': S.frames.forEach(f=>{ delete f.hidden; }); checkpoint(); renderAll(); break;
       case 'pieces': T.piecesOpen=!T.piecesOpen; renderControls(); break;
+      case 'viewMenu': T.viewOpen=!T.viewOpen; renderControls(); break;
+      case 'alignMenu': T.alignOpen=!T.alignOpen; renderControls(); break;
       case 'chip': if(!locked()) addFrame({w:+b.dataset.w,h:+b.dataset.h}); break;
       case 'addCustom': {
         if (locked()) break;
