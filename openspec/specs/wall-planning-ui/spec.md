@@ -72,3 +72,17 @@ With a selection, Delete or Backspace SHALL delete every selected piece, arrow k
 - **WHEN** frames are selected, no dialog is open and the app is in design mode
 - **THEN** Escape clears the selection
 
+
+### Requirement: Projection display toggles behind a View menu
+The projection toolbar SHALL group the display toggles (Labels, Margins, Hooks, Grid, Wall edge, Pictures, White) behind a "View" button that opens a panel containing them. Each toggle SHALL show its on/off state and keep its existing persistence.
+
+#### Scenario: Open View menu
+- **WHEN** the user clicks View in the projection toolbar
+- **THEN** the panel with the display toggles opens, and clicking View again closes it
+
+### Requirement: Fullscreen covers the whole page
+Entering fullscreen from projection mode SHALL fullscreen the whole page, not only the stage, so dialogs such as Layouts and Hang sheet remain visible while projecting.
+
+#### Scenario: Dialog in fullscreen
+- **WHEN** the app is fullscreen in projection mode and the user opens Layouts or Hang sheet
+- **THEN** the dialog appears above the projection

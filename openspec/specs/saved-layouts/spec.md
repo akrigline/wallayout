@@ -105,3 +105,10 @@ The system SHALL provide a "Layouts" button in the header that opens the saved-l
 - **WHEN** the user clicks Layouts and then Close
 - **THEN** the panel opens and then hides
 
+
+### Requirement: Layouts available while projecting
+The projection toolbar SHALL have a "Layouts" button that opens the same saved-layouts panel, and the panel SHALL be visible while projecting in fullscreen.
+
+#### Scenario: Open from projection
+- **WHEN** the user clicks Layouts in the projection toolbar
+- **THEN** the saved-layouts panel opens over the projection
