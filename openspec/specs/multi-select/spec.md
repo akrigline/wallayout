@@ -65,3 +65,14 @@ Delete or Backspace and "Delete selected" SHALL remove every selected frame. "Ce
 - **WHEN** two selected frames are centered in the area
 - **THEN** the center of their bounding box equals the area's center
 
+
+### Requirement: Align tools while projecting
+The projection toolbar SHALL have an "Align" button that opens a panel with the align and distribute buttons plus "Center in gallery area", "Center group" and "Select none", acting on the current selection exactly as the sidebar tools do. Align buttons SHALL be disabled with fewer than 2 pieces selected, and distribute buttons with fewer than 3.
+
+#### Scenario: Align from projection
+- **WHEN** three frames are selected in projection mode and "Align left edges" is pressed in the Align panel
+- **THEN** all three frames share the same left edge, as one undo step
+
+#### Scenario: Too few selected
+- **WHEN** at most one piece is selected
+- **THEN** the align buttons in the panel are disabled
