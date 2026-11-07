@@ -16,8 +16,9 @@ export function setMode(m){
   T.mode=m; stage.classList.toggle('projecting',m==='project');
   if (m==='project'){
     T.uiHidden=false;
-    const req=stage.requestFullscreen||stage.webkitRequestFullscreen;
-    try { const p=req&&req.call(stage); if (p&&p.catch) p.catch(()=>{}); } catch(e) {}
+    // Fullscreen the whole page, not just the stage: the Layouts and Hang sheet modals live outside the stage and would be invisible.
+    const el=document.documentElement, req=el.requestFullscreen||el.webkitRequestFullscreen;
+    try { const p=req&&req.call(el); if (p&&p.catch) p.catch(()=>{}); } catch(e) {}
     requestAnimationFrame(()=>{ initCorners(); T.calibrating=!S.cal.set; renderAll(); });
     T.calibrating=!S.cal.set;
   } else {
@@ -29,7 +30,7 @@ export function setMode(m){
 export function toggleFullscreen(){
   try {
     if (document.fullscreenElement) document.exitFullscreen();
-    else { const p=stage.requestFullscreen&&stage.requestFullscreen(); if (p&&p.catch) p.catch(()=>toast('Fullscreen is blocked here. Use your browser\'s fullscreen (F11).')); }
+    else { const el=document.documentElement, p=el.requestFullscreen&&el.requestFullscreen(); if (p&&p.catch) p.catch(()=>toast('Fullscreen is blocked here. Use your browser\'s fullscreen (F11).')); }
   } catch(e) { toast('Fullscreen is blocked here. Use your browser\'s fullscreen (F11).'); }
 }
 
